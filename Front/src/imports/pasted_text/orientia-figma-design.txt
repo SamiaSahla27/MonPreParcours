@@ -1,0 +1,134 @@
+You are a senior product designer. Create a complete Figma design for a 
+student career orientation web portal called "OrientIA".
+
+This is NOT a design spec — you have full creative freedom on colors, 
+typography, layout, spacing, and visual identity. Design something 
+memorable and modern for a Gen Z student audience.
+
+——————————————————————————————————————
+PRODUCT CONTEXT
+——————————————————————————————————————
+OrientIA is an AI-powered platform that helps students (ages 15–25) 
+discover their career path. The tone is warm, empowering, and forward-
+looking — not institutional or corporate.
+
+The user lands on this portal after logging in. It is their home base: 
+a dashboard of 5 distinct exploration spaces they can enter.
+
+——————————————————————————————————————
+NAVIGATION
+——————————————————————————————————————
+The page needs a top navigation bar containing:
+- A logo/brand name "OrientIA"
+- 3 navigation links: "Explorer", "Mon parcours", "Ressources"
+- A user avatar or profile indicator (logged-in state)
+- A global search input for searching jobs, sectors, or skills
+
+——————————————————————————————————————
+HERO / GREETING
+——————————————————————————————————————
+Below the nav, a personalized greeting section:
+- Greets the student by first name (e.g. "Bonjour Emma")
+- A short prompt inviting them to choose an exploration space
+- This section should feel welcoming, not like a dashboard header
+
+——————————————————————————————————————
+THE 5 EXPLORATION CARDS
+——————————————————————————————————————
+The main content is a set of 5 cards. Each card is an entry point 
+to a distinct feature space. The cards must be visually distinct 
+from each other (different accent color, icon, or visual treatment) 
+so the student immediately understands they are 5 different spaces.
+
+Each card must contain:
+- A clear visual identifier (icon, illustration, or color block)
+- A short category label (you choose the wording)
+- The user's need expressed in their own voice (first-person)
+- A 1-line description of what they'll find inside
+- A call-to-action button to enter the space
+
+The 5 needs to express on the cards, verbatim:
+
+  CARD 1
+  Need: "J'ai besoin d'être aidé pour savoir quel métier 
+         pourrait me correspondre"
+  What's inside: AI-powered career quiz, personalized 
+  suggestions, custom learning path
+
+  CARD 2
+  Need: "J'ai besoin de voir des simulateurs de métier"
+  What's inside: Immersive job simulations, day-in-the-life 
+  scenarios, interactive missions
+
+  CARD 3
+  Need: "Je veux avoir des interactions avec des professionnels"
+  What's inside: Live mentoring sessions, professional 
+  testimonials, Q&A with industry experts
+
+  CARD 4
+  Need: "Je veux savoir si des entreprises ont fait des actions 
+         impactantes sur l'inclusion et la diversité"
+  What's inside: CSR labels, diversity indexes, concrete 
+  employer initiatives
+
+  CARD 5
+  Need: "Je veux savoir si des métiers vont résister face 
+         à la montée de l'IA"
+  What's inside: Job resilience scores, key skills to develop, 
+  emerging roles
+
+——————————————————————————————————————
+CARD LAYOUT OPTIONS (pick what works best)
+——————————————————————————————————————
+You may use any combination of:
+- A featured/hero card for card 1 (larger, more prominent)
+- A 2-column or 3-column grid
+- Cards of equal size, or a mixed bento-box layout
+- Horizontal or vertical card orientation
+The only constraint: all 5 cards must be visible above or just 
+below the fold on a 1440px desktop screen.
+
+——————————————————————————————————————
+INTERACTIVE & STATE SPECS
+——————————————————————————————————————
+Design the following states for each card:
+- Default state
+- Hover state (show affordance that it's clickable)
+- A "New" or "Recommended" badge variant on at least one card
+
+Also design:
+- Empty search state (no results)
+- A progress indicator showing how far the student has advanced 
+  in their orientation journey (could be in nav, hero, or sidebar)
+
+——————————————————————————————————————
+PAGES TO DELIVER IN FIGMA
+——————————————————————————————————————
+1. Portal home (desktop 1440px) — main deliverable
+2. Portal home (mobile 390px) — responsive adaptation
+3. Component library frame — all 5 card variants + hover states 
+   extracted as reusable components
+4. 1 card expanded / detail view — what the student sees after 
+   clicking any card (you choose which one)
+
+——————————————————————————————————————
+DEVELOPER HANDOFF NOTES
+——————————————————————————————————————
+This will be implemented in:
+- Vite + React (component-based architecture)
+- Tailwind CSS (utility-first, no custom CSS files)
+- shadcn/ui (for base components: buttons, inputs, badges, avatars)
+
+Please use Figma's Auto Layout on all components so measurements 
+map cleanly to Tailwind's spacing scale (4px base unit).
+Export all icons as SVG. Name every layer and component clearly 
+in English so the dev team can read the Figma file.
+
+——————————————————————————————————————
+WHAT NOT TO DO
+——————————————————————————————————————
+- Do not make it look like a government education website
+- Do not use stock photo backgrounds
+- Do not design a landing/marketing page — this is an app UI
+- Do not make all 5 cards look identical (same size, same color)
+- Do not use Lorem Ipsum — use the real French copy provided above
