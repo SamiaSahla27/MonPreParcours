@@ -60,6 +60,10 @@ export function CardDetail() {
       navigate("/simulations/developpeur-1h");
       return;
     }
+    if (card.id === "mentoring"){
+      navigate("/mentors");
+      return;
+    }
     setStarted(true);
   };
 
