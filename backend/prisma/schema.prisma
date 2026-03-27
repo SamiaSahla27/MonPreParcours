@@ -1,0 +1,122 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  mentor
+  etudiant
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  role         UserRole
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  mentorProfile MentorProfile?
+
+  mentorConversations   Conversation[] @relation("MentorConversations")
+  etudiantConversations Conversation[] @relation("EtudiantConversations")
+
+  sentMessages     Message[] @relation("SentMessages")
+  receivedMessages Message[] @relation("ReceivedMessages")
+}
+
+model MentorProfile {
+  id          String     @id @default(uuid())
+  userId      String     @unique
+  fullName    String
+  description String
+  phone       String?
+  imageUrl    String?
+  emailPublic String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  user       User       @relation(fields: [userId], references: [id])
+  profession Profession @relation(fields: [professionId], references: [id])
+  professionId String
+  location   Location?  @relation(fields: [locationId], references: [id])
+  locationId String?
+
+  skills     MentorSkill[]
+
+  @@index([fullName])
+}
+
+model Profession {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  mentors MentorProfile[]
+}
+
+model Skill {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  mentors MentorSkill[]
+}
+
+model MentorSkill {
+  mentorProfileId String
+  skillId         String
+
+  mentorProfile MentorProfile @relation(fields: [mentorProfileId], references: [id], onDelete: Cascade)
+  skill         Skill         @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@id([mentorProfileId, skillId])
+  @@index([skillId])
+}
+
+model Location {
+  id        String   @id @default(uuid())
+  label     String
+  city      String?
+  country   String?
+  createdAt DateTime @default(now())
+
+  mentors MentorProfile[]
+
+  @@index([label])
+}
+
+model Conversation {
+  id         String   @id @default(uuid())
+  mentorId   String
+  etudiantId String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  mentor   User @relation("MentorConversations", fields: [mentorId], references: [id])
+  etudiant User @relation("EtudiantConversations", fields: [etudiantId], references: [id])
+
+  messages Message[]
+
+  @@unique([mentorId, etudiantId])
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  fromUserId     String
+  toUserId       String
+  text           String
+  createdAt      DateTime     @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+
+  fromUser User @relation("SentMessages", fields: [fromUserId], references: [id])
+  toUser   User @relation("ReceivedMessages", fields: [toUserId], references: [id])
+
+  @@index([conversationId, createdAt])
+}

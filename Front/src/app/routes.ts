@@ -7,6 +7,12 @@ import { DeveloperSimulation } from "./pages/DeveloperSimulation";
 import { SimulateurExplorePage } from "./pages/SimulateurExplorePage";
 import { SimulationMissionPage } from "./pages/SimulationMissionPage";
 import { SimulationJourneePage } from "./pages/SimulationJourneePage";
+import { Mentorat } from "./pages/Mentorat";
+import { Login } from "./pages/Login";
+import { Register } from "./pages/Register";
+import { Mentors } from "./pages/Mentors";
+import { MentorDetailPage } from "./pages/MentorDetail";
+import { ProfilePage } from "./pages/Profile";
 
 export const router = createBrowserRouter([
   {
@@ -20,6 +26,12 @@ export const router = createBrowserRouter([
       { path: "simulations/developpeur-1h", Component: DeveloperSimulation },
       { path: "simulations/:slug", Component: SimulationMissionPage },
       { path: "simulations/:slug/journee", Component: SimulationJourneePage },
+      { path: "mentors", Component: Mentors },
+      { path: "mentors/:id", Component: MentorDetailPage },
+      { path: "login", Component: Login },
+      { path: "register", Component: Register },
+      { path: "mentorat", Component: Mentorat },
+      { path: "profile", Component: ProfilePage },
     ],
   },
 ]);

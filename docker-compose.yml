@@ -1,0 +1,60 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: monpreparcours
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d monpreparcours"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    image: node:22-alpine
+    working_dir: /app
+    environment:
+      PORT: 3000
+      DATABASE_URL: postgresql://app:app@db:5432/monpreparcours?schema=public
+      JWT_SECRET: dev-secret-change-me
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: "300"
+      WATCHPACK_POLLING: "true"
+      WATCHPACK_POLLING_INTERVAL: "300"
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - backend_node_modules:/app/node_modules
+    command: sh -lc "npm ci || npm i && npm run start:dev"
+
+  front:
+    image: node:22-alpine
+    working_dir: /app
+    environment:
+      # Prefer same-origin in the browser (defaults to /api in code).
+      # If you set VITE_BACKEND_URL explicitly, it should be reachable by the browser.
+      VITE_BACKEND_URL: /api
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: "300"
+    ports:
+      - "8080:8080"
+    depends_on:
+      - backend
+    volumes:
+      - ./Front:/app
+      - front_node_modules:/app/node_modules
+    command: sh -lc "npm ci || npm i && npm run dev -- --host 0.0.0.0 --port 8080"
+
+volumes:
+  pgdata:
+  backend_node_modules:
+  front_node_modules:
