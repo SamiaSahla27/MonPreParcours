@@ -1,7 +1,18 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useNavigate } from "react-router";
-import { ArrowRight, BarChart3, Briefcase, ChevronLeft, Plus, Sparkles, Target, X } from "lucide-react";
+import {
+  ArrowRight,
+  BarChart3,
+  Briefcase,
+  ChevronLeft,
+  Globe,
+  Plus,
+  ShieldCheck,
+  Sparkles,
+  Target,
+  X,
+} from "lucide-react";
 import {
   DEFAULT_VERDICT,
   PRE_PROFILE_GENERIC_QUESTIONS,
@@ -32,6 +43,10 @@ import { TypewriterText } from "../orientation/components/TypewriterText";
 const viteMode = (import.meta as ImportMeta & { env?: { MODE?: string } }).env?.MODE;
 const VERDICT_DELAY_MS = viteMode === "test" ? 0 : 1600;
 const AUTO_SUBMIT_DELAY_MS = viteMode === "test" ? 0 : 130;
+const PROMO_SITE_NAME = "MonPreParcours";
+const PROMO_SITE_URL = "www.monpreparcours.fr";
+const PROMO_SITE_MESSAGE =
+  "MonPreParcours t'aide a transformer tes preferences en plan d'orientation clair et actionnable.";
 
 const SEGMENT_SELECTION_QUESTION: PhaseQuestion = {
   id: "SEGMENT-SELECT",
@@ -201,6 +216,29 @@ function SessionTabs({
   );
 }
 
+function PrintPromoBanner() {
+  return (
+    <footer className="pdf-footer-banner rounded-xl border border-indigo-200 bg-gradient-to-r from-indigo-600 to-cyan-500 px-4 py-3 text-white">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-white/20">
+            <ShieldCheck size={16} />
+          </span>
+          <div>
+            <p className="text-sm font-extrabold tracking-tight">{PROMO_SITE_NAME}</p>
+            <p className="text-[11px] font-medium text-indigo-50">{PROMO_SITE_MESSAGE}</p>
+          </div>
+        </div>
+
+        <p className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-50">
+          <Globe size={12} />
+          {PROMO_SITE_URL}
+        </p>
+      </div>
+    </footer>
+  );
+}
+
 export function OrientationIASession() {
   const navigate = useNavigate();
   const genericQuestionCount = PRE_PROFILE_GENERIC_QUESTIONS.length;
@@ -220,7 +258,7 @@ export function OrientationIASession() {
   const [generationError, setGenerationError] = useState("");
   const [isGenerationModalOpen, setIsGenerationModalOpen] = useState(false);
 
-  const exportContainerRef = useRef<HTMLDivElement | null>(null);
+  const printReportRef = useRef<HTMLDivElement | null>(null);
   const generationTimeoutRef = useRef<number | null>(null);
   const autoSubmitTimeoutRef = useRef<number | null>(null);
   const autoSubmitLockRef = useRef(false);
@@ -369,6 +407,15 @@ export function OrientationIASession() {
   }, [activeSession]);
 
   const privateSchoolPercent = 100 - schoolMix.publicPercent;
+  const selectedSegmentLabel = selectedSegment ? getSegmentLabel(selectedSegment) : "Profil non precise";
+
+  const reportSessionsForExport = useMemo(() => {
+    if (resultSessions.length > 0) {
+      return resultSessions;
+    }
+
+    return activeSession ? [activeSession] : [];
+  }, [activeSession, resultSessions]);
 
   useEffect(() => {
     const storedAnswer =
@@ -668,7 +715,15 @@ export function OrientationIASession() {
   }
 
   async function handleExportPdf() {
-    if (!exportContainerRef.current) {
+    if (!printReportRef.current) {
+      return;
+    }
+
+    const pageElements = Array.from(
+      printReportRef.current.querySelectorAll<HTMLElement>(".pdf-page")
+    );
+
+    if (pageElements.length === 0) {
       return;
     }
 
@@ -677,20 +732,31 @@ export function OrientationIASession() {
       import("jspdf"),
     ]);
 
-    const canvas = await html2canvas(exportContainerRef.current, {
-      scale: 2,
-      backgroundColor: "#f7f5ff",
-      useCORS: true,
-    });
-
-    const imageData = canvas.toDataURL("image/png");
     const pdf = new jsPDF({
-      orientation: canvas.width > canvas.height ? "landscape" : "portrait",
-      unit: "px",
-      format: [canvas.width, canvas.height],
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+      compress: true,
     });
 
-    pdf.addImage(imageData, "PNG", 0, 0, canvas.width, canvas.height);
+    for (const [index, pageElement] of pageElements.entries()) {
+      const canvas = await html2canvas(pageElement, {
+        scale: 2,
+        backgroundColor: "#ffffff",
+        useCORS: true,
+        windowWidth: pageElement.scrollWidth,
+        windowHeight: pageElement.scrollHeight,
+      });
+
+      const imageData = canvas.toDataURL("image/jpeg", 0.96);
+
+      if (index > 0) {
+        pdf.addPage("a4", "portrait");
+      }
+
+      pdf.addImage(imageData, "JPEG", 0, 0, 210, 297, undefined, "FAST");
+    }
+
     pdf.save(`orientationia-session-${new Date().toISOString().slice(0, 10)}.pdf`);
   }
 
@@ -704,43 +770,128 @@ export function OrientationIASession() {
       style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif" }}
     >
       <style>{`
+        .print-report-surface {
+          position: absolute;
+          left: 0;
+          top: 0;
+          transform: translateX(-9999px);
+          width: 210mm;
+          background: #ffffff;
+          color: #0f172a;
+          z-index: -1;
+        }
+
+        .pdf-page {
+          width: 210mm;
+          height: 297mm;
+          background: #ffffff;
+          padding: 10mm 10mm 20mm;
+          box-sizing: border-box;
+          position: relative;
+          overflow: hidden;
+          page-break-after: always;
+          break-after: page;
+        }
+
+        .pdf-page:last-child {
+          page-break-after: auto;
+          break-after: auto;
+        }
+
+        .pdf-content {
+          display: flex;
+          height: 100%;
+          flex-direction: column;
+          gap: 8px;
+          padding-bottom: 16mm;
+          box-sizing: border-box;
+          overflow: hidden;
+        }
+
+        .pdf-page,
+        .pdf-page * {
+          box-sizing: border-box;
+          overflow-wrap: anywhere;
+          word-break: break-word;
+        }
+
+        .pdf-content section,
+        .pdf-content article,
+        .pdf-content li,
+        .pdf-footer-banner {
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+
+        .pdf-footer-banner {
+          position: absolute;
+          left: 10mm;
+          right: 10mm;
+          bottom: 6mm;
+          z-index: 2;
+        }
+
+        @page {
+          size: A4 portrait;
+          margin: 0;
+        }
+
         @media print {
+          .app-screen,
           .no-print {
             display: none !important;
           }
+
+          .print-report-surface {
+            position: static !important;
+            left: 0 !important;
+            top: auto !important;
+            transform: none !important;
+            width: 210mm !important;
+            z-index: auto !important;
+            margin: 0 auto;
+          }
+
+          .pdf-page {
+            margin: 0;
+          }
+
           body {
             background: #ffffff !important;
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
           }
         }
       `}</style>
 
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -left-32 top-12 h-96 w-96 rounded-full bg-indigo-300/20 blur-3xl" />
-        <div className="absolute -right-32 top-40 h-96 w-96 rounded-full bg-fuchsia-300/20 blur-3xl" />
-        <div className="absolute bottom-0 left-1/3 h-72 w-72 rounded-full bg-violet-200/25 blur-3xl" />
-      </div>
-
-      <NeuralPulseCorner />
-
-      <div className="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-4 sm:px-6 lg:px-8">
-        <div className="no-print">
-          <SessionTopBar
-            archived={archived}
-            onQuit={() => navigate("/")}
-            onCloseSession={handleCloseSession}
-            onExportPdf={handleExportPdf}
-            onPrint={handlePrint}
-          />
+      <div className="app-screen">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -left-32 top-12 h-96 w-96 rounded-full bg-indigo-300/20 blur-3xl" />
+          <div className="absolute -right-32 top-40 h-96 w-96 rounded-full bg-fuchsia-300/20 blur-3xl" />
+          <div className="absolute bottom-0 left-1/3 h-72 w-72 rounded-full bg-violet-200/25 blur-3xl" />
         </div>
 
-        {archived ? (
-          <div className="no-print mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
-            Cette session est terminee et archivee.
-          </div>
-        ) : null}
+        <NeuralPulseCorner />
 
-        <main ref={exportContainerRef} className="mt-4 flex flex-1 flex-col">
-          <AnimatePresence mode="wait">
+        <div className="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-4 sm:px-6 lg:px-8">
+          <div className="no-print">
+            <SessionTopBar
+              archived={archived}
+              onQuit={() => navigate("/")}
+              onCloseSession={handleCloseSession}
+              onExportPdf={handleExportPdf}
+              onPrint={handlePrint}
+            />
+          </div>
+
+          {archived ? (
+            <div className="no-print mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
+              Cette session est terminee et archivee.
+            </div>
+          ) : null}
+
+          <main className="mt-4 flex flex-1 flex-col">
+            <AnimatePresence mode="wait">
             {(phase === "quiz" || phase === "ai-quiz") && currentQuestion ? (
               <motion.section
                 key={`${phase}-${quizQuestionIndex}-${aiQuestionIndex}-${selectedSegment ?? "none"}`}
@@ -1203,93 +1354,282 @@ export function OrientationIASession() {
                 </AnimatePresence>
               </motion.section>
             ) : null}
-          </AnimatePresence>
-        </main>
+            </AnimatePresence>
+          </main>
 
-        <AnimatePresence>
-          {isGenerationModalOpen ? (
-            <motion.div
-              className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/45 p-4"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
+          <AnimatePresence>
+            {isGenerationModalOpen ? (
               <motion.div
-                role="dialog"
-                aria-modal="true"
-                aria-label="Nouvelle generation"
-                initial={{ opacity: 0, y: 20, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 12, scale: 0.98 }}
-                transition={{ duration: 0.2 }}
-                className="w-full max-w-xl rounded-3xl border border-indigo-100 bg-white p-6 shadow-[0_24px_80px_rgba(30,36,90,0.28)]"
+                className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/45 p-4"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-indigo-700">
-                      <Sparkles size={14} />
-                      Regeneration IA
-                    </p>
-                    <h2 className="mt-3 text-xl font-bold text-slate-900">Generer une nouvelle variante</h2>
-                    <p className="mt-1 text-sm text-slate-600">
-                      Decris ce que tu veux ajuster pour creer un nouveau dashboard.
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleCloseGenerationModal}
-                    className="rounded-xl border border-slate-200 bg-white p-2 text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
-                    aria-label="Fermer"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-
-                <form
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    handleGenerateNewSession();
-                  }}
-                  className="mt-5 space-y-4"
+                <motion.div
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label="Nouvelle generation"
+                  initial={{ opacity: 0, y: 20, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 12, scale: 0.98 }}
+                  transition={{ duration: 0.2 }}
+                  className="w-full max-w-xl rounded-3xl border border-indigo-100 bg-white p-6 shadow-[0_24px_80px_rgba(30,36,90,0.28)]"
                 >
-                  <textarea
-                    value={generationPrompt}
-                    onChange={(event) => {
-                      setGenerationPrompt(event.target.value);
-                      if (generationError) {
-                        setGenerationError("");
-                      }
-                    }}
-                    placeholder="Ex: Renforcer les options en alternance et budget public"
-                    className="min-h-28 w-full rounded-2xl border border-indigo-200 bg-white px-4 py-3 text-sm text-indigo-950 outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-200/40"
-                  />
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-indigo-700">
+                        <Sparkles size={14} />
+                        Regeneration IA
+                      </p>
+                      <h2 className="mt-3 text-xl font-bold text-slate-900">Generer une nouvelle variante</h2>
+                      <p className="mt-1 text-sm text-slate-600">
+                        Decris ce que tu veux ajuster pour creer un nouveau dashboard.
+                      </p>
+                    </div>
 
-                  {generationError ? (
-                    <p className="text-sm font-medium text-rose-700">{generationError}</p>
-                  ) : null}
-
-                  <div className="flex items-center justify-end gap-2">
                     <button
                       type="button"
                       onClick={handleCloseGenerationModal}
-                      className="rounded-xl border border-indigo-200 bg-white px-4 py-2.5 text-sm font-semibold text-indigo-900 transition hover:bg-indigo-50"
+                      className="rounded-xl border border-slate-200 bg-white p-2 text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
+                      aria-label="Fermer"
                     >
-                      Annuler
-                    </button>
-                    <button
-                      type="submit"
-                      className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-indigo-700"
-                    >
-                      <Sparkles size={15} />
-                      Generer maintenant
+                      <X size={16} />
                     </button>
                   </div>
-                </form>
+
+                  <form
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      handleGenerateNewSession();
+                    }}
+                    className="mt-5 space-y-4"
+                  >
+                    <textarea
+                      value={generationPrompt}
+                      onChange={(event) => {
+                        setGenerationPrompt(event.target.value);
+                        if (generationError) {
+                          setGenerationError("");
+                        }
+                      }}
+                      placeholder="Ex: Renforcer les options en alternance et budget public"
+                      className="min-h-28 w-full rounded-2xl border border-indigo-200 bg-white px-4 py-3 text-sm text-indigo-950 outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-200/40"
+                    />
+
+                    {generationError ? (
+                      <p className="text-sm font-medium text-rose-700">{generationError}</p>
+                    ) : null}
+
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={handleCloseGenerationModal}
+                        className="rounded-xl border border-indigo-200 bg-white px-4 py-2.5 text-sm font-semibold text-indigo-900 transition hover:bg-indigo-50"
+                      >
+                        Annuler
+                      </button>
+                      <button
+                        type="submit"
+                        className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-indigo-700"
+                      >
+                        <Sparkles size={15} />
+                        Generer maintenant
+                      </button>
+                    </div>
+                  </form>
+                </motion.div>
               </motion.div>
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
+            ) : null}
+          </AnimatePresence>
+        </div>
+      </div>
+
+      <div ref={printReportRef} className="print-report-surface" aria-hidden>
+        {reportSessionsForExport.map((session, sessionIndex) => (
+          <div key={`print-pack-${session.id}`}>
+            <section className="pdf-page">
+              <div className="pdf-content">
+                <header className="flex items-start justify-between gap-4 border-b border-slate-200 pb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-cyan-500 text-white">
+                      <ShieldCheck size={16} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-extrabold text-slate-900">{PROMO_SITE_NAME}</p>
+                      <p className="text-[11px] font-medium text-slate-500">Rapport Orientation IA</p>
+                    </div>
+                  </div>
+
+                  <div className="text-right text-[11px] font-semibold text-slate-600">
+                    <p>{session.tabLabel}</p>
+                    <p>Genere le {session.generatedAt}</p>
+                  </div>
+                </header>
+
+                <section className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-indigo-700">
+                    Poste cible prioritaire
+                  </p>
+                  <h1 className="mt-1 text-xl font-extrabold leading-tight text-indigo-950">
+                    {session.verdict.mainTarget}
+                  </h1>
+                </section>
+
+                <section className="grid grid-cols-2 gap-2">
+                  <article className="rounded-xl border border-slate-200 bg-white px-3 py-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500">Profil</p>
+                    <p className="mt-1 text-sm font-bold text-slate-900">{session.verdict.profile}</p>
+                  </article>
+                  <article className="rounded-xl border border-slate-200 bg-white px-3 py-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500">Confiance</p>
+                    <p className="mt-1 text-sm font-bold text-slate-900">{session.verdict.confidence}%</p>
+                  </article>
+                  <article className="rounded-xl border border-slate-200 bg-white px-3 py-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500">Segment</p>
+                    <p className="mt-1 text-sm font-bold text-slate-900">{selectedSegmentLabel}</p>
+                  </article>
+                  <article className="rounded-xl border border-slate-200 bg-white px-3 py-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500">Ecoles</p>
+                    <p className="mt-1 text-sm font-bold text-slate-900">{session.schools.length}</p>
+                  </article>
+                </section>
+
+                    <section className="min-w-0 rounded-xl border border-slate-200 bg-white p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500">
+                    Resume du profil
+                  </p>
+                  <p className="mt-1 text-sm leading-relaxed text-slate-700">
+                    {truncateText(session.verdict.description, 320)}
+                  </p>
+                  <p className="mt-2 text-xs text-slate-500">
+                    Consigne de regeneration: {session.modificationPrompt || "Aucune"}
+                  </p>
+                </section>
+
+                <section className="rounded-xl border border-slate-200 bg-white p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500">
+                    Competences a renforcer
+                  </p>
+                  <div className="mt-2 grid grid-cols-1 gap-2">
+                    {session.verdict.skillsToImprove.map((skill, skillIndex) => (
+                      <div key={`${session.id}-${skill}`} className="rounded-lg bg-slate-50 px-2 py-1.5">
+                        <div className="flex items-center justify-between text-xs font-semibold text-slate-700">
+                          <span>{skill}</span>
+                          <span>{getSkillLevel(skillIndex, session.verdict.confidence)}%</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="rounded-xl border border-slate-200 bg-white p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500">
+                    Timeline recommandee
+                  </p>
+                  <ol className="mt-2 space-y-2">
+                    {session.timeline.map((step, index) => (
+                      <li key={`${session.id}-${step.id}`} className="rounded-lg border border-slate-100 bg-slate-50 px-2 py-1.5">
+                        <p className="text-[11px] font-semibold text-indigo-700">
+                          Etape {index + 1} | {step.yearTitle}
+                        </p>
+                        <p className="text-xs font-semibold text-slate-900">{step.subtitle}</p>
+                        <p className="mt-1 text-[11px] text-slate-600">{truncateText(step.details[0] ?? "", 130)}</p>
+                      </li>
+                    ))}
+                  </ol>
+                </section>
+              </div>
+
+              <PrintPromoBanner />
+            </section>
+
+            {session.schools.length > 0 ? (
+              <section className="pdf-page">
+                <div className="pdf-content">
+                  <header className="flex items-start justify-between gap-4 border-b border-slate-200 pb-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.11em] text-indigo-700">Recherche detaillee</p>
+                      <h2 className="mt-1 text-xl font-extrabold text-slate-900">
+                        {session.tabLabel} | Ecoles et formations recommandees
+                      </h2>
+                    </div>
+                    <p className="text-[11px] font-semibold text-slate-600">{session.generatedAt}</p>
+                  </header>
+
+                  <section className="rounded-xl border border-slate-200 bg-white p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500">
+                      Repartition public/prive
+                    </p>
+                    <div className="mt-2 h-3 overflow-hidden rounded-full bg-indigo-100">
+                      <div
+                        className="h-3 bg-emerald-500"
+                        style={{
+                          width: `${Math.round((session.schools.filter((school) => school.status === "Public").length / session.schools.length) * 100)}%`,
+                        }}
+                      />
+                    </div>
+                    <div className="mt-2 flex items-center justify-between text-xs font-semibold text-slate-700">
+                      <span>
+                        Public: {session.schools.filter((school) => school.status === "Public").length}
+                      </span>
+                      <span>
+                        Prive: {session.schools.filter((school) => school.status === "Prive").length}
+                      </span>
+                    </div>
+                  </section>
+
+                  <section className="grid grid-cols-2 gap-2">
+                    {session.schools.map((school, schoolIndex) => {
+                      const matchScore = getSchoolMatchScore(school, schoolIndex, session.verdict.confidence);
+
+                      return (
+                        <article key={`${session.id}-school-${school.id}`} className="min-w-0 rounded-xl border border-slate-200 bg-white p-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <h3 className="text-sm font-bold text-slate-900">{school.name}</h3>
+                            <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-bold text-slate-700">
+                              {school.status}
+                            </span>
+                          </div>
+
+                          <p className="mt-1 text-[11px] text-slate-600">{school.location}</p>
+
+                          <div className="mt-2 h-1.5 rounded-full bg-indigo-100">
+                            <div className="h-1.5 rounded-full bg-indigo-500" style={{ width: `${matchScore}%` }} />
+                          </div>
+                          <p className="mt-1 text-[11px] font-semibold text-indigo-700">Score: {matchScore}%</p>
+
+                          <div className="mt-2 space-y-1 text-[11px] text-slate-700">
+                            <p>
+                              <span className="font-semibold text-slate-900">Formation: </span>
+                              {truncateText(school.program, 88)}
+                            </p>
+                            <p>
+                              <span className="font-semibold text-slate-900">Duree: </span>
+                              {school.duration}
+                            </p>
+                            <p>
+                              <span className="font-semibold text-slate-900">Cout: </span>
+                              {school.cost}
+                            </p>
+                            <p className="rounded-md bg-slate-50 px-2 py-1 text-[10px] leading-relaxed text-slate-600">
+                              {truncateText(school.conclusion, 132)}
+                            </p>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </section>
+
+                  <p className="text-[11px] text-slate-500">
+                    Rapport {sessionIndex + 1}/{reportSessionsForExport.length} - Synthese complete prete a l'impression.
+                  </p>
+                </div>
+
+                <PrintPromoBanner />
+              </section>
+            ) : null}
+          </div>
+        ))}
       </div>
     </div>
   );
