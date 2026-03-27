@@ -1,11 +1,13 @@
 import React, { useEffect } from "react";
-import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 
 interface Figure {
   name: string;
   domain: string;
-  description: string;
-  category: string;
+  tagline: string;
+  whyMatters: string;
+  whatChanged: string;
+  whyToday: string;
   categoryColor: string;
 }
 
@@ -13,58 +15,74 @@ const FIGURES: Figure[] = [
   {
     name: "Marie Curie",
     domain: "Science",
-    description: "Pionnière de la recherche scientifique, Marie Curie a révolutionné la physique et la chimie grâce à ses travaux sur la radioactivité.",
-    category: "Science",
+    tagline: "Elle a ouvert la voie à des découvertes scientifiques majeures dans un monde où les femmes avaient très peu de place dans la recherche.",
+    whyMatters: "Marie Curie a prouvé qu'une femme pouvait transformer la science à un niveau mondial, malgré les barrières sociales et académiques de son époque.",
+    whatChanged: "Ses recherches sur la radioactivité ont marqué l'histoire de la physique, de la chimie et de la médecine.",
+    whyToday: "Sa trajectoire rappelle que le talent ne dépend ni du genre ni du milieu, et que la place des femmes dans les sciences reste un enjeu essentiel.",
     categoryColor: "#7C3AED",
   },
   {
     name: "Frida Kahlo",
     domain: "Art",
-    description: "Artiste emblématique, Frida Kahlo a marqué l'histoire de l'art par des œuvres intimes, puissantes et profondément liées à son identité.",
-    category: "Art",
+    tagline: "Elle a transformé sa douleur, son identité et sa différence en une œuvre reconnue dans le monde entier.",
+    whyMatters: "Frida Kahlo a imposé une manière radicalement personnelle de créer, en parlant du corps, de la souffrance, du genre et de l'identité.",
+    whatChanged: "Elle a montré qu'on pouvait faire de l'art à partir de son vécu, sans se conformer aux attentes traditionnelles.",
+    whyToday: "Son parcours parle de confiance en soi, d'expression personnelle et de représentation de réalités souvent invisibilisées.",
     categoryColor: "#F97316",
   },
   {
     name: "Rosa Parks",
     domain: "Droits civiques",
-    description: "Figure majeure de la lutte contre la ségrégation raciale, Rosa Parks est devenue un symbole du combat pour l'égalité aux États-Unis.",
-    category: "Droits",
+    tagline: "Par un refus simple mais immense, elle est devenue un symbole mondial de la lutte contre la ségrégation raciale.",
+    whyMatters: "Rosa Parks a incarné le courage de dire non à une injustice quotidienne devenue \"normale\".",
+    whatChanged: "Son geste a contribué à faire basculer le mouvement des droits civiques aux États-Unis.",
+    whyToday: "Elle montre qu'un acte de résistance, même individuel, peut avoir un impact collectif énorme.",
     categoryColor: "#F43F5E",
   },
   {
     name: "Malala Yousafzai",
     domain: "Éducation / droits des femmes",
-    description: "Militante pakistanaise, Malala Yousafzai défend le droit des filles à l'éducation et incarne aujourd'hui un engagement mondial pour l'égalité.",
-    category: "Éducation",
+    tagline: "Très jeune, elle a défendu le droit des filles à aller à l'école face à la violence et à l'interdiction.",
+    whyMatters: "Malala est devenue une voix mondiale pour l'éducation et l'égalité, alors même qu'on voulait la faire taire.",
+    whatChanged: "Elle a rendu visible à l'échelle internationale le combat pour l'accès à l'éducation des filles.",
+    whyToday: "Elle rappelle que l'école, l'accès au savoir et l'égalité des chances ne sont pas acquis partout.",
     categoryColor: "#10B981",
   },
   {
     name: "Nelson Mandela",
     domain: "Politique / droits humains",
-    description: "Leader de la lutte contre l'apartheid, Nelson Mandela a profondément changé l'histoire de l'Afrique du Sud et la défense des droits humains.",
-    category: "Politique",
+    tagline: "Il a consacré sa vie à combattre un système raciste qui privait une majorité de ses droits fondamentaux.",
+    whyMatters: "Mandela est devenu un symbole de résistance, de justice et de transformation politique.",
+    whatChanged: "Il a joué un rôle majeur dans la fin de l'apartheid en Afrique du Sud.",
+    whyToday: "Son parcours montre que les droits humains se défendent sur le temps long, avec courage, stratégie et persévérance.",
     categoryColor: "#0EA5E9",
   },
   {
     name: "Alan Turing",
     domain: "Informatique / mathématiques",
-    description: "Mathématicien visionnaire, Alan Turing a posé les bases de l'informatique moderne tout en devenant une figure forte de l'histoire LGBT.",
-    category: "Science",
+    tagline: "Il a changé l'histoire de l'informatique, tout en étant persécuté à cause de son homosexualité.",
+    whyMatters: "Alan Turing a contribué à poser les bases du monde numérique moderne.",
+    whatChanged: "Ses travaux ont marqué les mathématiques, l'informatique et la compréhension des machines intelligentes.",
+    whyToday: "Il rappelle qu'une société peut bénéficier du génie d'une personne tout en la rejetant, et que la reconnaissance des personnes LGBT reste un enjeu de justice.",
     categoryColor: "#7C3AED",
   },
   {
     name: "Harvey Milk",
     domain: "Politique / droits LGBT",
-    description: "Harvey Milk fut l'un des premiers élus ouvertement gays aux États-Unis et une voix essentielle dans la lutte pour les droits LGBT.",
-    category: "Politique",
-    categoryColor: "#0EA5E9",
+    tagline: "Il a fait entrer la visibilité LGBT dans la sphère politique à une époque où cela exposait à de fortes violences.",
+    whyMatters: "Harvey Milk a montré qu'être visible en politique pouvait déjà être un acte militant.",
+    whatChanged: "Il a contribué à faire avancer la représentation des personnes gays dans l'espace public et institutionnel.",
+    whyToday: "Il rappelle que la représentation compte : voir des personnes différentes accéder à des rôles visibles change les mentalités.",
+    categoryColor: "#F59E0B",
   },
   {
     name: "Marsha P. Johnson",
     domain: "Droits trans et LGBTQ+",
-    description: "Militante trans et icône queer, Marsha P. Johnson est devenue une figure incontournable du combat pour les droits LGBTQ+.",
-    category: "Droits",
-    categoryColor: "#F43F5E",
+    tagline: "Elle est devenue une figure majeure des luttes queer et trans, dans un contexte de rejet et de grande précarité.",
+    whyMatters: "Marsha P. Johnson a porté une parole essentielle pour les personnes les plus marginalisées au sein même des minorités.",
+    whatChanged: "Elle est aujourd'hui associée à l'histoire des mobilisations qui ont renforcé les luttes LGBTQ+.",
+    whyToday: "Elle aide à comprendre que l'inclusion doit aussi prendre en compte celles et ceux qu'on voit le moins.",
+    categoryColor: "#EC4899",
   },
 ];
 
@@ -75,45 +93,57 @@ interface Props {
 
 export function IconicFiguresModal({ isOpen, onClose }: Props) {
   const [currentIndex, setCurrentIndex] = React.useState(0);
-  const [filter, setFilter] = React.useState<string>("Tous");
+  const [direction, setDirection] = React.useState<'next' | 'prev'>('next');
 
-  const categories = ["Tous", ...Array.from(new Set(FIGURES.map(f => f.category)))];
-  const filteredFigures = filter === "Tous" 
-    ? FIGURES 
-    : FIGURES.filter(f => f.category === filter);
+  const currentFigure = FIGURES[currentIndex];
 
-  // Handle escape key
+  // Handle keyboard navigation
   useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+    const handleKeyboard = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      } else if (e.key === "ArrowRight") {
+        handleNext();
+      } else if (e.key === "ArrowLeft") {
+        handlePrev();
+      }
     };
+    
     if (isOpen) {
-      document.addEventListener("keydown", handleEscape);
+      document.addEventListener("keydown", handleKeyboard);
       document.body.style.overflow = "hidden";
     }
+    
     return () => {
-      document.removeEventListener("keydown", handleEscape);
+      document.removeEventListener("keydown", handleKeyboard);
       document.body.style.overflow = "unset";
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, currentIndex]);
 
   if (!isOpen) return null;
 
   const handleNext = () => {
-    setCurrentIndex((prev) => (prev + 1) % filteredFigures.length);
+    setDirection('next');
+    setCurrentIndex((prev) => (prev + 1) % FIGURES.length);
   };
 
   const handlePrev = () => {
-    setCurrentIndex((prev) => (prev - 1 + filteredFigures.length) % filteredFigures.length);
+    setDirection('prev');
+    setCurrentIndex((prev) => (prev - 1 + FIGURES.length) % FIGURES.length);
+  };
+
+  const handleDotClick = (index: number) => {
+    setDirection(index > currentIndex ? 'next' : 'prev');
+    setCurrentIndex(index);
   };
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{
-        background: "rgba(26, 16, 53, 0.75)",
-        backdropFilter: "blur(8px)",
-        animation: "fadeIn 0.2s ease-out",
+        background: "rgba(26, 16, 53, 0.8)",
+        backdropFilter: "blur(12px)",
+        animation: "fadeIn 0.3s ease-out",
       }}
       onClick={onClose}
     >
@@ -126,61 +156,103 @@ export function IconicFiguresModal({ isOpen, onClose }: Props) {
           @keyframes slideUp {
             from { 
               opacity: 0;
-              transform: translateY(20px) scale(0.95);
+              transform: translateY(30px) scale(0.96);
             }
             to { 
               opacity: 1;
               transform: translateY(0) scale(1);
             }
           }
+          @keyframes slideInRight {
+            from {
+              opacity: 0;
+              transform: translateX(30px);
+            }
+            to {
+              opacity: 1;
+              transform: translateX(0);
+            }
+          }
+          @keyframes slideInLeft {
+            from {
+              opacity: 0;
+              transform: translateX(-30px);
+            }
+            to {
+              opacity: 1;
+              transform: translateX(0);
+            }
+          }
         `}
       </style>
       
       <div
-        className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl"
+        className="w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-3xl"
         style={{
           background: "white",
-          boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
-          animation: "slideUp 0.3s ease-out",
+          boxShadow: "0 25px 80px rgba(0,0,0,0.35)",
+          animation: "slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
           fontFamily: "'Plus Jakarta Sans', sans-serif",
         }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div
-          className="sticky top-0 z-10 px-6 sm:px-8 pt-6 sm:pt-8 pb-4"
+          className="px-6 sm:px-10 pt-8 sm:pt-10 pb-6"
           style={{
-            background: "linear-gradient(180deg, #ffffff 0%, #ffffff 85%, rgba(255,255,255,0) 100%)",
+            background: "linear-gradient(135deg, #FFF1F2 0%, #FFF7ED 100%)",
+            borderBottom: "1.5px solid rgba(244,63,94,0.1)",
           }}
         >
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex-1">
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex-1 pr-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Sparkles size={20} style={{ color: "#F43F5E" }} />
+                <span
+                  className="text-xs"
+                  style={{
+                    color: "#F43F5E",
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                  }}
+                >
+                  Histoire & Figures inspirantes
+                </span>
+              </div>
+              
               <h2
                 style={{
                   fontWeight: 800,
-                  fontSize: "1.75rem",
+                  fontSize: "1.875rem",
                   color: "#1a1035",
                   letterSpacing: "-0.02em",
-                  lineHeight: 1.2,
+                  lineHeight: 1.15,
+                  marginBottom: "12px",
                 }}
               >
                 8 figures qui ont fait avancer l'égalité et la visibilité
               </h2>
+              
               <p
-                className="mt-2 text-sm"
+                className="text-sm"
                 style={{
-                  color: "#6B7280",
-                  lineHeight: 1.6,
+                  color: "#4B5563",
+                  lineHeight: 1.7,
+                  maxWidth: "600px",
                 }}
               >
-                Les politiques d'inclusion en entreprise s'inscrivent dans une histoire plus large, portée par des personnalités qui ont transformé les droits, la représentation et la reconnaissance à travers le monde.
+                Les politiques d'inclusion en entreprise ne viennent pas de nulle part. 
+                Elles s'inscrivent dans une histoire portée par des personnes qui ont fait 
+                bouger les droits, la représentation et la reconnaissance à travers le monde.
               </p>
             </div>
+            
             <button
               onClick={onClose}
-              className="ml-4 flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 hover:bg-rose-50"
+              className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 hover:bg-white"
               style={{
-                border: "1.5px solid rgba(244,63,94,0.2)",
+                border: "1.5px solid rgba(244,63,94,0.25)",
                 color: "#F43F5E",
               }}
               aria-label="Fermer"
@@ -188,86 +260,196 @@ export function IconicFiguresModal({ isOpen, onClose }: Props) {
               <X size={20} />
             </button>
           </div>
+        </div>
 
-          {/* Filters */}
-          <div className="flex items-center gap-2 flex-wrap">
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => {
-                  setFilter(cat);
-                  setCurrentIndex(0);
-                }}
-                className="text-xs px-3 py-1.5 rounded-full transition-all duration-200"
+        {/* Main Content - Single Figure Display */}
+        <div className="px-6 sm:px-10 py-8 sm:py-10">
+          <div
+            key={currentIndex}
+            style={{
+              animation: `${direction === 'next' ? 'slideInRight' : 'slideInLeft'} 0.4s cubic-bezier(0.16, 1, 0.3, 1)`,
+            }}
+          >
+            {/* Category Badge */}
+            <div className="mb-5">
+              <span
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm"
                 style={{
-                  background: filter === cat ? "#F43F5E" : "white",
-                  color: filter === cat ? "white" : "#6B7280",
-                  fontWeight: filter === cat ? 700 : 500,
-                  border: `1.5px solid ${filter === cat ? "#F43F5E" : "rgba(0,0,0,0.1)"}`,
-                  boxShadow: filter === cat ? "0 2px 8px rgba(244,63,94,0.25)" : "none",
+                  background: `${currentFigure.categoryColor}15`,
+                  color: currentFigure.categoryColor,
+                  fontWeight: 700,
+                  border: `1.5px solid ${currentFigure.categoryColor}30`,
                 }}
               >
-                {cat}
-              </button>
-            ))}
+                {currentFigure.domain}
+              </span>
+            </div>
+
+            {/* Name */}
+            <h3
+              className="mb-4"
+              style={{
+                fontWeight: 800,
+                fontSize: "2.25rem",
+                color: "#1a1035",
+                letterSpacing: "-0.02em",
+                lineHeight: 1.1,
+              }}
+            >
+              {currentFigure.name}
+            </h3>
+
+            {/* Tagline */}
+            <p
+              className="mb-8 pb-8"
+              style={{
+                fontSize: "1.125rem",
+                color: "#6B7280",
+                lineHeight: 1.65,
+                fontWeight: 500,
+                borderBottom: "1.5px solid rgba(0,0,0,0.08)",
+              }}
+            >
+              {currentFigure.tagline}
+            </p>
+
+            {/* Content Sections */}
+            <div className="space-y-6">
+              {/* Why Matters */}
+              <ContentBlock
+                title="Pourquoi cette personne compte"
+                content={currentFigure.whyMatters}
+                color="#F43F5E"
+              />
+
+              {/* What Changed */}
+              <ContentBlock
+                title="Ce qu'elle a changé"
+                content={currentFigure.whatChanged}
+                color="#F59E0B"
+              />
+
+              {/* Why Today */}
+              <ContentBlock
+                title="Pourquoi ça te concerne aujourd'hui"
+                content={currentFigure.whyToday}
+                color="#10B981"
+              />
+            </div>
           </div>
         </div>
 
-        {/* Content - Grid view for desktop, carousel for mobile */}
-        <div className="px-6 sm:px-8 pb-8">
-          {/* Desktop: Grid */}
-          <div className="hidden md:grid md:grid-cols-2 gap-4">
-            {filteredFigures.map((figure, idx) => (
-              <FigureCard key={idx} figure={figure} />
-            ))}
+        {/* Footer - Conclusion Message */}
+        <div
+          className="px-6 sm:px-10 py-6"
+          style={{
+            background: "linear-gradient(135deg, rgba(59,130,246,0.05), rgba(139,92,246,0.05))",
+            borderTop: "1.5px solid rgba(59,130,246,0.1)",
+          }}
+        >
+          <div className="flex items-start gap-3">
+            <div
+              className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center"
+              style={{
+                background: "rgba(59,130,246,0.15)",
+              }}
+            >
+              <Sparkles size={16} style={{ color: "#3B82F6" }} />
+            </div>
+            <p
+              className="text-sm"
+              style={{
+                color: "#4B5563",
+                lineHeight: 1.7,
+                fontWeight: 500,
+              }}
+            >
+              Ces avancées ont ouvert la voie à des politiques d'égalité, de diversité 
+              et d'inclusion que les entreprises sont aujourd'hui appelées à mettre en 
+              œuvre concrètement.
+            </p>
+          </div>
+        </div>
+
+        {/* Navigation */}
+        <div
+          className="px-6 sm:px-10 py-6"
+          style={{
+            borderTop: "1.5px solid rgba(0,0,0,0.08)",
+            background: "#FAFAFA",
+          }}
+        >
+          {/* Progress Indicator */}
+          <div className="flex items-center justify-center mb-5">
+            <span
+              className="text-sm px-4 py-2 rounded-full"
+              style={{
+                background: "rgba(244,63,94,0.1)",
+                color: "#F43F5E",
+                fontWeight: 700,
+              }}
+            >
+              {currentIndex + 1} / {FIGURES.length}
+            </span>
           </div>
 
-          {/* Mobile: Carousel */}
-          <div className="md:hidden">
-            <FigureCard figure={filteredFigures[currentIndex]} />
-            
-            {/* Navigation */}
-            <div className="flex items-center justify-between mt-6">
-              <button
-                onClick={handlePrev}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm transition-all duration-200"
-                style={{
-                  background: "white",
-                  border: "1.5px solid rgba(0,0,0,0.1)",
-                  color: "#4B5563",
-                  fontWeight: 600,
-                }}
-                aria-label="Figure précédente"
-              >
-                <ChevronLeft size={16} />
-                Précédente
-              </button>
+          {/* Navigation Buttons */}
+          <div className="flex items-center justify-between gap-4 mb-5">
+            <button
+              onClick={handlePrev}
+              className="flex items-center gap-2 px-5 py-3 rounded-xl text-sm transition-all duration-200 hover:shadow-md"
+              style={{
+                background: "white",
+                border: "1.5px solid rgba(0,0,0,0.1)",
+                color: "#4B5563",
+                fontWeight: 700,
+                flex: 1,
+              }}
+              aria-label="Figure précédente"
+            >
+              <ChevronLeft size={18} />
+              Précédente
+            </button>
 
-              <span
-                className="text-sm"
-                style={{
-                  color: "#9CA3AF",
-                  fontWeight: 600,
-                }}
-              >
-                {currentIndex + 1} / {filteredFigures.length}
-              </span>
+            <button
+              onClick={handleNext}
+              className="flex items-center gap-2 px-5 py-3 rounded-xl text-sm transition-all duration-200 hover:shadow-md"
+              style={{
+                background: "linear-gradient(135deg, #F43F5E, #E11D48)",
+                color: "white",
+                fontWeight: 700,
+                flex: 1,
+                border: "none",
+              }}
+              aria-label="Figure suivante"
+            >
+              Suivante
+              <ChevronRight size={18} />
+            </button>
+          </div>
 
+          {/* Dot Navigation */}
+          <div className="flex items-center justify-center gap-2">
+            {FIGURES.map((figure, index) => (
               <button
-                onClick={handleNext}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm transition-all duration-200"
-                style={{
-                  background: "white",
-                  border: "1.5px solid rgba(0,0,0,0.1)",
-                  color: "#4B5563",
-                  fontWeight: 600,
-                }}
-                aria-label="Figure suivante"
+                key={index}
+                onClick={() => handleDotClick(index)}
+                className="group transition-all duration-200"
+                aria-label={`Aller à ${figure.name}`}
+                title={figure.name}
               >
-                Suivante
-                <ChevronRight size={16} />
+                <div
+                  className="rounded-full transition-all duration-200"
+                  style={{
+                    width: index === currentIndex ? "32px" : "8px",
+                    height: "8px",
+                    background: index === currentIndex
+                      ? "#F43F5E"
+                      : "rgba(0,0,0,0.2)",
+                  }}
+                />
               </button>
-            </div>
+            ))}
           </div>
         </div>
       </div>
@@ -275,69 +457,45 @@ export function IconicFiguresModal({ isOpen, onClose }: Props) {
   );
 }
 
-function FigureCard({ figure }: { figure: Figure }) {
-  const [hovered, setHovered] = React.useState(false);
-
+// Content Block Component
+function ContentBlock({ title, content, color }: { title: string; content: string; color: string }) {
   return (
     <div
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      className="rounded-2xl p-5 transition-all duration-300"
+      className="p-5 rounded-xl"
       style={{
-        background: "#FFFFFF",
-        border: `1.5px solid ${hovered ? "rgba(244,63,94,0.25)" : "rgba(0,0,0,0.07)"}`,
-        boxShadow: hovered
-          ? "0 12px 40px rgba(244,63,94,0.12)"
-          : "0 2px 8px rgba(0,0,0,0.04)",
-        transform: hovered ? "translateY(-2px)" : "none",
+        background: `${color}08`,
+        border: `1.5px solid ${color}20`,
       }}
     >
-      {/* Category badge */}
-      <span
-        className="inline-block text-xs px-2.5 py-1 rounded-full mb-3"
-        style={{
-          background: `${figure.categoryColor}15`,
-          color: figure.categoryColor,
-          fontWeight: 700,
-          border: `1px solid ${figure.categoryColor}30`,
-        }}
-      >
-        {figure.category}
-      </span>
-
-      {/* Name */}
-      <h3
-        className="mb-1.5"
+      <h4
+        className="mb-2 flex items-center gap-2"
         style={{
           fontWeight: 700,
-          fontSize: "1.125rem",
-          color: "#1a1035",
-          letterSpacing: "-0.01em",
+          fontSize: "0.875rem",
+          color: color,
+          textTransform: "uppercase",
+          letterSpacing: "0.05em",
         }}
       >
-        {figure.name}
-      </h3>
-
-      {/* Domain */}
+        <div
+          style={{
+            width: "4px",
+            height: "16px",
+            background: color,
+            borderRadius: "2px",
+          }}
+        />
+        {title}
+      </h4>
       <p
-        className="text-sm mb-3"
         style={{
-          color: "#F43F5E",
-          fontWeight: 600,
+          color: "#374151",
+          lineHeight: 1.7,
+          fontSize: "0.9375rem",
+          fontWeight: 500,
         }}
       >
-        {figure.domain}
-      </p>
-
-      {/* Description */}
-      <p
-        className="text-sm"
-        style={{
-          color: "#4B5563",
-          lineHeight: 1.65,
-        }}
-      >
-        {figure.description}
+        {content}
       </p>
     </div>
   );
