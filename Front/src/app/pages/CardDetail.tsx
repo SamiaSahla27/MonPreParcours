@@ -1,6 +1,6 @@
 import React, { useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router";
-import { ArrowLeft, CheckCircle2, Star, Clock, Users, ChevronRight } from "lucide-react";
+import { ArrowLeft, CheckCircle2, ChevronRight } from "lucide-react";
 import { cards } from "../data/cards";
 import * as careerAiApi from "../services/careerAiApi";
 import { FuturAiAnalysisPanel } from "../components/futur-ai/FuturAiAnalysisPanel";
@@ -156,29 +156,6 @@ export function CardDetail() {
                 "{card.need}"
               </p>
             </div>
-          </div>
-
-          {/* Stats row */}
-          <div className="flex flex-wrap gap-4 mt-8">
-            {[
-              { icon: Clock, label: "~20 min pour commencer" },
-              { icon: Users, label: "12 847 étudiants actifs" },
-              { icon: Star, label: "4.8 / 5 étoiles" },
-            ].map(({ icon: StatIcon, label }) => (
-              <div
-                key={label}
-                className="flex items-center gap-2 text-xs px-3 py-1.5 rounded-full"
-                style={{
-                  background: "rgba(255,255,255,0.18)",
-                  backdropFilter: "blur(10px)",
-                  color: "white",
-                  fontWeight: 500,
-                }}
-              >
-                <StatIcon size={13} />
-                {label}
-              </div>
-            ))}
           </div>
         </div>
       </div>
