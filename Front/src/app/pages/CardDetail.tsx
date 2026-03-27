@@ -212,7 +212,7 @@ export function CardDetail() {
 
             {/* CTA */}
             <button
-              onClick={() => setStarted(true)}
+              onClick={() => navigate(`/mentors`)}
               className="flex items-center justify-center gap-3 w-full py-4 rounded-2xl text-base transition-all duration-200 hover:opacity-90"
               style={{
                 background: card.gradient,
