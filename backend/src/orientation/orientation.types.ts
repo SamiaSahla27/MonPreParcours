@@ -5,6 +5,18 @@ export type EducationLevel =
   | 'bac_plus_2'
   | 'reconversion';
 
+export type OrientationProfileId =
+  | 'builder'
+  | 'strategist'
+  | 'creative'
+  | 'mentor';
+
+export interface OrientationProfile {
+  id: OrientationProfileId;
+  label: string;
+  summary: string;
+}
+
 export interface OrientationQuizOption {
   id: string;
   label: string;
@@ -57,13 +69,16 @@ export interface AdvisorVerdict {
 export interface OrientationSession {
   id: string;
   educationLevel: EducationLevel;
-  answers: OrientationQuizAnswer[];
+  profileId: OrientationProfileId;
+  phase1Answers: OrientationQuizAnswer[];
+  phase2Questions: OrientationQuizQuestion[];
   createdAt: Date;
 }
 
 export interface OrientationQuestionsResponse {
   stage: 'intro' | 'follow-up';
   questions: OrientationQuizQuestion[];
+  profile?: OrientationProfile;
 }
 
 export interface CreateOrientationSessionInput {
@@ -87,7 +102,8 @@ export interface OrientationVerdictResponse {
 
 export interface OrientationGroqPayload {
   educationLevel: EducationLevel;
-  answers: OrientationQuizAnswer[];
-  followUpAnswers: OrientationQuizAnswer[];
+  profileId: OrientationProfileId;
+  phase1Answers: OrientationQuizAnswer[];
+  phase2Answers: OrientationQuizAnswer[];
   studentNotes?: string;
 }

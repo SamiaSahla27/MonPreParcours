@@ -1,5 +1,4 @@
 import {
-  EducationLevel,
   OrientationQuestionsResponse,
   OrientationQuizQuestion,
 } from './orientation.types';
@@ -120,229 +119,176 @@ const INTRO_QUESTIONS: OrientationQuizQuestion[] = [
       },
     ],
   },
+  {
+    id: 'favorite-mission',
+    prompt: 'Quel type de mission te donne le plus denergie ?',
+    inputPlaceholder: 'Ex: lancer un produit, optimiser un systeme...',
+    options: [
+      {
+        id: 'mission-product',
+        label: 'Imaginer / lancer de nouveaux produits',
+        helper: 'Builders, entrepreneurs',
+      },
+      {
+        id: 'mission-analytics',
+        label: 'Optimiser des systemes par la data',
+        helper: 'Strateges, analystes',
+      },
+      {
+        id: 'mission-creative',
+        label: 'Creer des experiences / contenus memorables',
+        helper: 'Creatifs, narrateurs',
+      },
+      {
+        id: 'mission-support',
+        label: 'Accompagner et coacher des personnes',
+        helper: 'Mentors, facilitateurs',
+      },
+    ],
+  },
+  {
+    id: 'team-role',
+    prompt: 'Dans une equipe, quel role prends-tu naturellement ?',
+    inputPlaceholder: 'Ex: lead produit, analyste, facilitateur...',
+    options: [
+      {
+        id: 'role-lead',
+        label: 'Piloter la vision et prioriser',
+        helper: 'Profil builder',
+      },
+      {
+        id: 'role-analyst',
+        label: 'Creuser les donnees pour orienter les choix',
+        helper: 'Profil strategist',
+      },
+      {
+        id: 'role-designer',
+        label: 'Designer des experiences immersives',
+        helper: 'Profil creative',
+      },
+      {
+        id: 'role-mentor',
+        label: 'Coach / faire grandir les autres',
+        helper: 'Profil mentor',
+      },
+    ],
+  },
+  {
+    id: 'problem-approach',
+    prompt:
+      'Quand un probleme complexe surgit, quelle est ta premiere action ?',
+    inputPlaceholder: 'Ex: prototyper, analyser, brainstormer...',
+    options: [
+      {
+        id: 'approach-prototype',
+        label: 'Construire un prototype pour tester vite',
+        helper: 'Approche builder',
+      },
+      {
+        id: 'approach-data',
+        label: 'Analyser les donnees et definir des hypotheses',
+        helper: 'Approche strategist',
+      },
+      {
+        id: 'approach-creative',
+        label: 'Brainstormer des pistes originales',
+        helper: 'Approche creative',
+      },
+      {
+        id: 'approach-dialog',
+        label: 'Reunir les parties prenantes et faciliter',
+        helper: 'Approche mentor',
+      },
+    ],
+  },
+  {
+    id: 'creativity-role',
+    prompt: 'Quel espace creatif veux-tu absolument garder ?',
+    inputPlaceholder: 'Ex: direction artistique, narration, design...',
+    options: [
+      {
+        id: 'creativity-concept',
+        label: 'Conceptualiser des produits / services',
+        helper: 'Builder vision',
+      },
+      {
+        id: 'creativity-structure',
+        label: 'Structurer des strategies et roadmaps',
+        helper: 'Strategist vision',
+      },
+      {
+        id: 'creativity-story',
+        label: 'Raconter, scenariser, designer des univers',
+        helper: 'Creative vision',
+      },
+      {
+        id: 'creativity-guidance',
+        label: 'Imaginer des parcours daccompagnement',
+        helper: 'Mentor vision',
+      },
+    ],
+  },
+  {
+    id: 'tech-confidence',
+    prompt: 'Quel est ton rapport actuel aux outils tech / IA ?',
+    inputPlaceholder: 'Ex: code, data, no-code, posture humaine...',
+    options: [
+      {
+        id: 'tech-builder',
+        label: 'Je code / prototype regulierement',
+        helper: 'Builder hands-on',
+      },
+      {
+        id: 'tech-analyst',
+        label: 'Je manipule des jeux de donnees / dashboards',
+        helper: 'Strategist data',
+      },
+      {
+        id: 'tech-no-code',
+        label: 'Je mixe no-code, design et IA generative',
+        helper: 'Creative maker',
+      },
+      {
+        id: 'tech-human',
+        label: 'Je privilegie la relation humaine, IA en support',
+        helper: 'Mentor focus humain',
+      },
+    ],
+  },
+  {
+    id: 'decision-driver',
+    prompt: 'Qu est-ce qui guide tes decisions finales ?',
+    inputPlaceholder: 'Ex: impact utilisateur, data, intuition...',
+    options: [
+      {
+        id: 'decision-kpi',
+        label: 'Les indicateurs business / produit',
+        helper: 'Builder oriente impact',
+      },
+      {
+        id: 'decision-evidence',
+        label: 'Les preuves chifrees et la logique',
+        helper: 'Strategist rationnel',
+      },
+      {
+        id: 'decision-experience',
+        label: 'Le ressenti utilisateur et la narration',
+        helper: 'Creative experience',
+      },
+      {
+        id: 'decision-care',
+        label: 'Le bien-etre des personnes accompagnees',
+        helper: 'Mentor care',
+      },
+    ],
+  },
 ];
 
-type FollowUpBank = Record<EducationLevel, OrientationQuizQuestion[]>;
-
-const FOLLOW_UP_BANK: FollowUpBank = {
-  college: [
-    {
-      id: 'college-strength',
-      prompt: 'Quelle matiere te semble la plus naturelle ?',
-      inputPlaceholder: 'Ex: Maths, SVT, Technologie...',
-      options: [
-        { id: 'maths', label: 'Maths / logique', helper: 'Scientifique' },
-        { id: 'literature', label: 'Francais / langues', helper: 'Editorial' },
-        { id: 'tech', label: 'Technologie / numerique', helper: 'Maker' },
-        { id: 'social', label: 'SVT / socio', helper: 'Humain' },
-      ],
-    },
-    {
-      id: 'college-accomp',
-      prompt: 'Quel accompagnement attends-tu ?',
-      inputPlaceholder: 'Ex: Coaching orientation, stage observe...',
-      options: [
-        {
-          id: 'discover',
-          label: 'Decouverte de metiers',
-          helper: 'Immersions',
-        },
-        { id: 'project', label: 'Projets concrets', helper: 'Clubs / fablab' },
-        { id: 'mentoring', label: 'Mentorat', helper: 'Suivi personnel' },
-        { id: 'academic', label: 'Renforcement scolaire', helper: 'Tutorat' },
-      ],
-    },
-  ],
-  lycee: [
-    {
-      id: 'lycee-speciality',
-      prompt: 'Quelles specialites / options envisages-tu ?',
-      inputPlaceholder: 'Ex: NSI + Maths...',
-      options: [
-        {
-          id: 'nsi-maths',
-          label: 'NSI + Maths',
-          helper: 'Numerique / product',
-        },
-        {
-          id: 'ses-geopolitics',
-          label: 'SES + HGGSP',
-          helper: 'Societal / business',
-        },
-        {
-          id: 'svt-phys',
-          label: 'SVT + Physique',
-          helper: 'Sante / ingenierie',
-        },
-        { id: 'lit-arts', label: 'LLCER + Arts', helper: 'Creation / media' },
-      ],
-    },
-    {
-      id: 'lycee-parcours',
-      prompt: 'Souhaites-tu une experience avant le bac ?',
-      inputPlaceholder: 'Ex: stage, projet associatif...',
-      options: [
-        {
-          id: 'summer-school',
-          label: 'Summer school / campus',
-          helper: 'Universites',
-        },
-        {
-          id: 'hackathon',
-          label: 'Hackathons / concours',
-          helper: 'Challenge',
-        },
-        {
-          id: 'association',
-          label: 'Engagement associatif',
-          helper: 'Impact social',
-        },
-        {
-          id: 'entreprise',
-          label: 'Stages en entreprise',
-          helper: 'Professionnalisation',
-        },
-      ],
-    },
-  ],
-  terminal: [
-    {
-      id: 'terminal-priority',
-      prompt: 'Quelle priorite Parcoursup veux-tu securiser ?',
-      inputPlaceholder: 'Ex: BUT Info, Licence eco...',
-      options: [
-        { id: 'but', label: 'BUT / IUT', helper: 'Encadrement + pratique' },
-        {
-          id: 'licence',
-          label: 'Licences universitaires',
-          helper: 'Flexibilite',
-        },
-        { id: 'bts', label: 'BTS / CFA', helper: 'Alternance rapide' },
-        { id: 'prep', label: 'Classe prepa', helper: 'Exigence forte' },
-      ],
-    },
-    {
-      id: 'terminal-alternance',
-      prompt: 'as-tu une alternance ciblee ?',
-      inputPlaceholder: 'Ex: structure, secteur, mission...',
-      options: [
-        {
-          id: 'oui',
-          label: 'Oui, deja identifiee',
-          helper: 'Matching necessaire',
-        },
-        { id: 'partiel', label: 'Quelques pistes', helper: 'A preciser' },
-        { id: 'non', label: 'Pas encore', helper: 'Exploration totale' },
-        {
-          id: 'gap',
-          label: 'Je prefere une annee de transition',
-          helper: 'Temps de projet',
-        },
-      ],
-    },
-  ],
-  bac_plus_2: [
-    {
-      id: 'bac2-continuation',
-      prompt: 'Quelle suite dapprentissage imagines-tu ?',
-      inputPlaceholder: 'Ex: Licence pro, Ecole specialisee...',
-      options: [
-        {
-          id: 'licence-pro',
-          label: 'Licence pro / bachelor',
-          helper: 'Insertion rapide',
-        },
-        {
-          id: 'grande-ecole',
-          label: 'Programme grande ecole',
-          helper: 'Grade master',
-        },
-        {
-          id: 'double-diplome',
-          label: 'Double diplome',
-          helper: 'Expertise croisee',
-        },
-        {
-          id: 'international',
-          label: 'Depart a letanger',
-          helper: 'Semestres abroad',
-        },
-      ],
-    },
-    {
-      id: 'bac2-exp',
-      prompt: 'Quel projet phare veux-tu mettre en avant ?',
-      inputPlaceholder: 'Ex: SaaS en stage, mission associative...',
-      options: [
-        {
-          id: 'product',
-          label: 'Projet produit numerique',
-          helper: 'Produit / IA',
-        },
-        { id: 'data', label: 'Analyse / data', helper: 'Insights' },
-        { id: 'design', label: 'Experience utilisateur', helper: 'UX' },
-        { id: 'impact', label: 'Impact social / edtech', helper: 'Inclusion' },
-      ],
-    },
-  ],
-  reconversion: [
-    {
-      id: 'reco-background',
-      prompt: 'D ou viens-tu professionnellement ?',
-      inputPlaceholder: 'Ex: Commerce, logistique, enseignement...',
-      options: [
-        {
-          id: 'commerce',
-          label: 'Commerce / relation client',
-          helper: 'Transfert soft skills',
-        },
-        { id: 'gestion', label: 'Gestion / finance', helper: 'Structuration' },
-        {
-          id: 'tech',
-          label: 'Tech / support',
-          helper: 'Montee en specialisation',
-        },
-        { id: 'autre', label: 'Autre parcours', helper: 'Profil hybride' },
-      ],
-    },
-    {
-      id: 'reco-rythme',
-      prompt: 'Quelle logistique dois-je respecter ?',
-      inputPlaceholder: 'Ex: temps partiel, teletravail...',
-      options: [
-        {
-          id: 'evening',
-          label: 'Soir / week-end',
-          helper: 'Formation continue',
-        },
-        { id: 'remote', label: '100% a distance', helper: 'E-learning' },
-        {
-          id: 'intensive',
-          label: 'Bootcamp intensif',
-          helper: 'immersion totale',
-        },
-        {
-          id: 'hybrid',
-          label: 'Hybride avec entreprise',
-          helper: 'Alternance adulte',
-        },
-      ],
-    },
-  ],
-};
+export const INTRO_QUESTION_COUNT = INTRO_QUESTIONS.length;
 
 export function getIntroQuestions(): OrientationQuestionsResponse {
   return {
     stage: 'intro',
     questions: INTRO_QUESTIONS,
-  };
-}
-
-export function getFollowUpQuestions(
-  level: EducationLevel,
-): OrientationQuestionsResponse {
-  return {
-    stage: 'follow-up',
-    questions: FOLLOW_UP_BANK[level] ?? FOLLOW_UP_BANK.lycee,
   };
 }

@@ -122,9 +122,18 @@ export interface ChatMessage {
   attachments?: ChatAttachment[];
 }
 
+export type OrientationProfileId = "builder" | "strategist" | "creative" | "mentor";
+
+export interface OrientationProfile {
+  id: OrientationProfileId;
+  label: string;
+  summary: string;
+}
+
 export interface OrientationQuestionsResponse {
   stage: QuestionStage;
   questions: QuizQuestion[];
+  profile?: OrientationProfile;
 }
 
 export interface CreateOrientationSessionInput {
