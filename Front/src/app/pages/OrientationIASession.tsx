@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useNavigate } from "react-router";
-import { BarChart3, ChevronLeft, Plus, Sparkles, X } from "lucide-react";
+import { ArrowRight, BarChart3, Briefcase, ChevronLeft, Plus, Sparkles, Target, X } from "lucide-react";
 import {
   DEFAULT_VERDICT,
   PRE_PROFILE_GENERIC_QUESTIONS,
@@ -178,14 +178,21 @@ function SessionTabs({
               key={session.id}
               type="button"
               onClick={() => onSelect(session.id)}
-              className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+              className={`relative overflow-hidden rounded-xl px-4 py-2 text-sm font-semibold transition ${
                 isActive
-                  ? "bg-indigo-600 text-white shadow-[0_10px_24px_rgba(63,71,235,0.35)]"
+                  ? "text-white shadow-[0_10px_24px_rgba(63,71,235,0.35)]"
                   : "bg-white text-indigo-900 hover:bg-indigo-50"
               }`}
               aria-pressed={isActive}
             >
-              {session.tabLabel}
+              {isActive ? (
+                <motion.span
+                  layoutId="active-session-tab"
+                  className="absolute inset-0 rounded-xl bg-indigo-600"
+                  transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                />
+              ) : null}
+              <span className="relative z-10">{session.tabLabel}</span>
             </button>
           );
         })}
@@ -360,6 +367,8 @@ export function OrientationIASession() {
       publicPercent,
     };
   }, [activeSession]);
+
+  const privateSchoolPercent = 100 - schoolMix.publicPercent;
 
   useEffect(() => {
     const storedAnswer =
@@ -888,14 +897,41 @@ export function OrientationIASession() {
                     activeSessionId={activeSession.id}
                     onSelect={setActiveSessionId}
                   />
+
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={`target-${activeSession.id}`}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                      className="mt-4 rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-600 via-indigo-500 to-cyan-500 p-4 text-white sm:p-5"
+                    >
+                      <p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-indigo-100">
+                        <Briefcase size={14} />
+                        Poste cible prioritaire
+                      </p>
+                      <h2 className="mt-2 text-lg font-extrabold leading-tight sm:text-2xl">
+                        {activeSession.verdict.mainTarget}
+                      </h2>
+                      <p className="mt-2 inline-flex items-center gap-2 text-xs font-semibold text-indigo-50/95 sm:text-sm">
+                        <Target size={14} />
+                        Profil {activeSession.verdict.profile} | Confiance {activeSession.verdict.confidence}%
+                      </p>
+                    </motion.div>
+                  </AnimatePresence>
                 </article>
 
-                <motion.section
-                  variants={dashboardGridVariants}
-                  initial="hidden"
-                  animate="visible"
-                  className="grid gap-4 lg:grid-cols-12"
-                >
+                <AnimatePresence mode="wait">
+                  <motion.section
+                    key={`dashboard-grid-${activeSession.id}`}
+                    variants={dashboardGridVariants}
+                    initial="hidden"
+                    animate="visible"
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                    className="grid gap-4 lg:grid-cols-12"
+                  >
                   <motion.article
                     variants={dashboardCardVariants}
                     className="rounded-3xl border border-indigo-100 bg-white p-5 shadow-[0_18px_45px_rgba(58,53,106,0.08)] md:p-6 lg:col-span-8"
@@ -931,17 +967,9 @@ export function OrientationIASession() {
                       </div>
                     </div>
 
-                    <div className="mt-5 rounded-2xl border border-slate-100 bg-slate-50/75 p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-                        Cap principal vise
-                      </p>
-                      <p className="mt-1 text-sm font-bold text-slate-900 sm:text-base">
-                        {activeSession.verdict.mainTarget}
-                      </p>
-                      <p className="mt-2 text-xs text-slate-500">
-                        Derniere consigne: {activeSession.modificationPrompt || "Aucune"}
-                      </p>
-                    </div>
+                    <p className="mt-4 text-xs font-medium text-slate-500">
+                      Derniere consigne: {activeSession.modificationPrompt || "Aucune"}
+                    </p>
 
                     <div className="mt-5 rounded-2xl border border-slate-100 bg-white p-4">
                       <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
@@ -973,7 +1001,7 @@ export function OrientationIASession() {
                     className="rounded-3xl border border-indigo-100 bg-white p-5 shadow-[0_18px_45px_rgba(58,53,106,0.08)] md:p-6 lg:col-span-4"
                   >
                     <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-bold text-slate-900">Mix ecoles</h3>
+                      <h3 className="text-lg font-bold text-slate-900">Repartition des ecoles</h3>
                       <BarChart3 size={18} className="text-indigo-600" />
                     </div>
 
@@ -995,37 +1023,35 @@ export function OrientationIASession() {
                       </div>
                     </div>
 
-                    <div className="mt-4 space-y-3">
-                      {schoolVisuals.slice(0, 3).map((school) => (
-                        <motion.div
-                          key={school.id}
-                          whileHover={{ y: -2 }}
-                          className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3"
+                    <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50/80 p-4">
+                      <div className="flex items-center gap-4">
+                        <div
+                          className="relative h-24 w-24 rounded-full"
+                          style={{
+                            background: `conic-gradient(#10b981 0% ${schoolMix.publicPercent}%, #f59e0b ${schoolMix.publicPercent}% 100%)`,
+                          }}
                         >
-                          <div className="flex items-start justify-between gap-2">
-                            <p className="text-sm font-bold text-slate-900">{school.name}</p>
-                            <span
-                              className={`rounded-full border px-2 py-0.5 text-[11px] font-bold ${getSchoolStatusBadgeStyles(
-                                school.status
-                              )}`}
-                            >
-                              {school.status}
-                            </span>
+                          <div className="absolute inset-[9px] grid place-items-center rounded-full border border-white/70 bg-white text-xs font-bold text-slate-800">
+                            {activeSession.schools.length}
                           </div>
-                          <p className="mt-1 text-xs text-slate-600">{school.location}</p>
-                          <div className="mt-2 h-1.5 rounded-full bg-indigo-100">
-                            <motion.div
-                              className="h-1.5 rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500"
-                              initial={{ width: 0 }}
-                              animate={{ width: `${school.matchScore}%` }}
-                              transition={{ duration: 0.6, ease: "easeOut" }}
-                            />
-                          </div>
-                          <p className="mt-1 text-[11px] font-semibold text-indigo-700">
-                            Match estime: {school.matchScore}%
+                        </div>
+
+                        <div className="space-y-2 text-xs font-semibold text-slate-700">
+                          <p className="inline-flex items-center gap-2">
+                            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                            Public: {schoolMix.publicPercent}%
                           </p>
-                        </motion.div>
-                      ))}
+                          <p className="inline-flex items-center gap-2">
+                            <span className="h-2.5 w-2.5 rounded-full bg-amber-500" />
+                            Prive: {privateSchoolPercent}%
+                          </p>
+                        </div>
+                      </div>
+
+                      <p className="mt-3 text-xs text-slate-600">
+                        Details des etablissements affiches une seule fois dans la section
+                        "Ecoles et formations" ci-dessous.
+                      </p>
                     </div>
                   </motion.article>
 
@@ -1045,8 +1071,12 @@ export function OrientationIASession() {
                       </span>
                     </div>
 
+                    <p className="mt-3 text-xs font-semibold uppercase tracking-[0.1em] text-indigo-700/85">
+                      Sens de lecture: Annee 1 vers Annee finale
+                    </p>
+
                     <motion.ol
-                      className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4"
+                      className="mt-5 flex flex-col gap-3 xl:flex-row"
                       variants={timelineContainerVariants}
                       initial="hidden"
                       animate="visible"
@@ -1055,21 +1085,39 @@ export function OrientationIASession() {
                         <motion.li
                           key={step.id}
                           variants={timelineStepVariants}
-                          className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4"
+                          className={`relative xl:flex-1 ${
+                            index < activeSession.timeline.length - 1 ? "pb-7 xl:pb-0" : ""
+                          }`}
                           data-testid="timeline-step"
                         >
-                          <div className="flex items-center justify-between">
-                            <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-indigo-600 text-xs font-bold text-white">
-                              {index + 1}
-                            </span>
-                            <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-indigo-700">
-                              {step.yearTitle}
-                            </span>
+                          <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4">
+                            <div className="flex items-center justify-between">
+                              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-indigo-600 text-xs font-bold text-white">
+                                {index + 1}
+                              </span>
+                              <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-indigo-700">
+                                {step.yearTitle}
+                              </span>
+                            </div>
+                            <h4 className="mt-3 text-sm font-bold text-slate-900">{step.subtitle}</h4>
+                            <p className="mt-2 text-xs leading-relaxed text-slate-600">
+                              {truncateText(step.details[0] ?? "", 96)}
+                            </p>
                           </div>
-                          <h4 className="mt-3 text-sm font-bold text-slate-900">{step.subtitle}</h4>
-                          <p className="mt-2 text-xs leading-relaxed text-slate-600">
-                            {truncateText(step.details[0] ?? "", 96)}
-                          </p>
+
+                          {index < activeSession.timeline.length - 1 ? (
+                            <>
+                              <div className="absolute left-1/2 top-full flex -translate-x-1/2 items-center gap-1 xl:hidden">
+                                <span className="h-5 w-px bg-indigo-200" aria-hidden />
+                                <ArrowRight size={13} className="rotate-90 text-indigo-400" aria-hidden />
+                              </div>
+
+                              <div className="absolute -right-5 top-1/2 hidden -translate-y-1/2 items-center gap-1 xl:flex">
+                                <span className="h-px w-7 bg-indigo-200" aria-hidden />
+                                <ArrowRight size={14} className="text-indigo-400" aria-hidden />
+                              </div>
+                            </>
+                          ) : null}
                         </motion.li>
                       ))}
                     </motion.ol>
@@ -1151,7 +1199,8 @@ export function OrientationIASession() {
                       ))}
                     </div>
                   </motion.article>
-                </motion.section>
+                  </motion.section>
+                </AnimatePresence>
               </motion.section>
             ) : null}
           </AnimatePresence>
