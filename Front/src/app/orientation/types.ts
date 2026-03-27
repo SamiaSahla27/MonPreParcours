@@ -1,8 +1,8 @@
-export type SessionPhase = "quiz" | "generating" | "chat";
 export type QuestionStage = "intro" | "follow-up";
 
-export type EducationLevel = "college" | "lycee" | "terminal" | "bac_plus_2" | "reconversion";
 export type SessionPhase = "quiz" | "generating" | "ai-quiz" | "chat";
+
+export type EducationLevel = "college" | "lycee" | "terminal" | "bac_plus_2" | "reconversion";
 
 export type OrientationSegment = "collegien" | "lyceen" | "etudiant" | "adulte";
 
