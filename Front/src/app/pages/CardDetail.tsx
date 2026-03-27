@@ -1,7 +1,9 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router";
-import { ArrowLeft, CheckCircle2, Star, Clock, Users, ChevronRight } from "lucide-react";
+import { ArrowLeft, CheckCircle2, ChevronRight } from "lucide-react";
 import { cards } from "../data/cards";
+import * as careerAiApi from "../services/careerAiApi";
+import { FuturAiAnalysisPanel } from "../components/futur-ai/FuturAiAnalysisPanel";
 
 const RELATED_JOBS: Record<string, { title: string; match: number; tag: string }[]> = {
   decouvrir: [
@@ -35,6 +37,12 @@ export function CardDetail() {
   const { cardId } = useParams<{ cardId: string }>();
   const navigate = useNavigate();
   const [started, setStarted] = useState(false);
+  const [jobTitle, setJobTitle] = useState("");
+  const [analysis, setAnalysis] = useState<careerAiApi.CareerAiAnalysis | null>(null);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const searchPanelRef = useRef<HTMLDivElement | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
 
   const card = cards.find((c) => c.id === cardId);
 
@@ -50,6 +58,30 @@ export function CardDetail() {
 
   const Icon = card.icon;
   const relatedJobs = RELATED_JOBS[card.id] || [];
+  const isFuturCard = card.id === "futur";
+
+  const submitCareerAnalysis = async (nextJobTitle?: string) => {
+    const normalizedJobTitle = (nextJobTitle ?? jobTitle).trim();
+    if (!normalizedJobTitle) {
+      setAnalysis(null);
+      setAnalysisError("Merci de renseigner un métier.");
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setAnalysisError(null);
+
+    try {
+      const result = await careerAiApi.analyzeCareer({ jobTitle: normalizedJobTitle });
+      setAnalysis(result);
+      setStarted(true);
+    } catch {
+      setAnalysis(null);
+      setAnalysisError("Impossible de lancer l’analyse pour le moment. Réessaie dans quelques instants.");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
 
   return (
     <div
@@ -125,29 +157,6 @@ export function CardDetail() {
               </p>
             </div>
           </div>
-
-          {/* Stats row */}
-          <div className="flex flex-wrap gap-4 mt-8">
-            {[
-              { icon: Clock, label: "~20 min pour commencer" },
-              { icon: Users, label: "12 847 étudiants actifs" },
-              { icon: Star, label: "4.8 / 5 étoiles" },
-            ].map(({ icon: StatIcon, label }) => (
-              <div
-                key={label}
-                className="flex items-center gap-2 text-xs px-3 py-1.5 rounded-full"
-                style={{
-                  background: "rgba(255,255,255,0.18)",
-                  backdropFilter: "blur(10px)",
-                  color: "white",
-                  fontWeight: 500,
-                }}
-              >
-                <StatIcon size={13} />
-                {label}
-              </div>
-            ))}
-          </div>
         </div>
       </div>
 
@@ -156,6 +165,79 @@ export function CardDetail() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left: Features */}
           <div className="lg:col-span-2 flex flex-col gap-6">
+            {isFuturCard ? (
+              <div
+                ref={searchPanelRef}
+                className="p-5 rounded-2xl"
+                style={{
+                  background: "white",
+                  border: "1.5px solid rgba(0,0,0,0.06)",
+                  boxShadow: "0 2px 12px rgba(0,0,0,0.03)",
+                }}
+              >
+                <h3 style={{ fontWeight: 700, color: "#1a1035", fontSize: "1rem" }}>
+                  Analyse ton métier face à l’IA
+                </h3>
+                <p className="mt-1 text-sm" style={{ color: "#6B7280", lineHeight: 1.7 }}>
+                  Saisis un métier pour estimer sa compatibilité avec l’évolution de l’IA et ses transformations.
+                </p>
+
+                <div className="mt-4 flex flex-col sm:flex-row gap-3">
+                  <input
+                    ref={searchInputRef}
+                    value={jobTitle}
+                    onChange={(event) => setJobTitle(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && !isAnalyzing) {
+                        void submitCareerAnalysis();
+                      }
+                    }}
+                    placeholder="Ex: Pompier, Infirmier, Comptable..."
+                    className="w-full rounded-xl px-4 py-3 text-sm"
+                    style={{ border: "1px solid #E5E7EB", outline: "none", color: "#111827" }}
+                  />
+                  <button
+                    onClick={() => {
+                      void submitCareerAnalysis();
+                    }}
+                    disabled={isAnalyzing}
+                    className="flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm transition-opacity disabled:opacity-60"
+                    style={{
+                      background: card.gradient,
+                      color: "white",
+                      fontWeight: 700,
+                      border: "none",
+                      minWidth: 178,
+                    }}
+                  >
+                    {isAnalyzing ? "Analyse en cours..." : "Analyser mon métier"}
+                    {!isAnalyzing && <ChevronRight size={16} />}
+                  </button>
+                </div>
+
+                {analysisError ? (
+                  <p className="mt-3 text-sm" style={{ color: "#B91C1C" }}>
+                    {analysisError}
+                  </p>
+                ) : null}
+
+                {analysis ? (
+                  <FuturAiAnalysisPanel
+                    analysis={analysis}
+                    accentColor={card.accentColor}
+                    lightColor={card.lightColor}
+                    onSelectComparableCareer={(title) => {
+                      setJobTitle(title);
+                      setAnalysisError(null);
+                      searchPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                      searchInputRef.current?.focus();
+                      void submitCareerAnalysis(title);
+                    }}
+                  />
+                ) : null}
+              </div>
+            ) : null}
+
             <h2
               style={{
                 fontWeight: 800,
@@ -211,29 +293,31 @@ export function CardDetail() {
             ))}
 
             {/* CTA */}
-            <button
-              onClick={() => setStarted(true)}
-              className="flex items-center justify-center gap-3 w-full py-4 rounded-2xl text-base transition-all duration-200 hover:opacity-90"
-              style={{
-                background: card.gradient,
-                color: "white",
-                fontWeight: 700,
-                boxShadow: `0 8px 32px ${card.accentColor}40`,
-                border: "none",
-              }}
-            >
-              {started ? (
-                <>
-                  <CheckCircle2 size={20} />
-                  C'est parti ! 🎉
-                </>
-              ) : (
-                <>
-                  {card.ctaLabel}
-                  <ChevronRight size={18} />
-                </>
-              )}
-            </button>
+            {!isFuturCard ? (
+              <button
+                onClick={() => setStarted(true)}
+                className="flex items-center justify-center gap-3 w-full py-4 rounded-2xl text-base transition-all duration-200 hover:opacity-90"
+                style={{
+                  background: card.gradient,
+                  color: "white",
+                  fontWeight: 700,
+                  boxShadow: `0 8px 32px ${card.accentColor}40`,
+                  border: "none",
+                }}
+              >
+                {started ? (
+                  <>
+                    <CheckCircle2 size={20} />
+                    C'est parti ! 🎉
+                  </>
+                ) : (
+                  <>
+                    {card.ctaLabel}
+                    <ChevronRight size={18} />
+                  </>
+                )}
+              </button>
+            ) : null}
           </div>
 
           {/* Right: sidebar */}
@@ -251,7 +335,7 @@ export function CardDetail() {
                 className="mb-4"
                 style={{ fontWeight: 700, color: "#1a1035", fontSize: "0.9375rem" }}
               >
-                Métiers associés
+                Métiers associés à l'IA
               </h3>
               <div className="flex flex-col gap-3">
                 {relatedJobs.map((job) => (
@@ -295,7 +379,7 @@ export function CardDetail() {
                 className="mb-4"
                 style={{ fontWeight: 700, color: "#1a1035", fontSize: "0.9375rem" }}
               >
-                Autres espaces
+                Navigation
               </h3>
               <div className="flex flex-col gap-2">
                 {cards
