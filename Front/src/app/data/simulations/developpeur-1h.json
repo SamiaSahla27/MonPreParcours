@@ -1,0 +1,65 @@
+{
+  "slug": "developpeur-1h",
+  "titre": "Je suis développeur pendant 1h",
+  "categorie": "tech",
+  "duree": "~1h",
+  "niveau": "decouverte",
+  "description": "Une mission courte pour comprendre comment un développeur écoute un besoin, corrige un bug, teste et déploie.",
+  "compatibilityScore": 92,
+  "badges": [
+    { "icon": "steps", "label": "5 étapes guidées" },
+    { "icon": "bolt", "label": "Feedback immédiat" },
+    { "icon": "code", "label": "Logique simple" },
+    { "icon": "rocket", "label": "Finale déployée" }
+  ],
+  "etapes": [
+    {
+      "id": "etape-1",
+      "type": "scenario",
+      "tag": "ÉTAPE 1",
+      "label_type": "Comprendre le besoin",
+      "titre": "On commence par vérifier ce que l'application doit contrôler.",
+      "sous_titre": "Tu avances comme dans une vraie mini mission de développement.",
+      "scenario": {
+        "texte": "\"Un utilisateur veut créer un événement avec une date.\"",
+        "consigne": "Qu'est-ce qu'il faut vérifier avant de créer l'événement ?"
+      },
+      "indice": "Un développeur ne vérifie que les informations utiles au besoin.",
+      "choices": [
+        {
+          "id": "titre",
+          "label": "Vérifier que le titre existe",
+          "correct": true,
+          "feedback": "Exactement — un événement sans titre n'a aucun sens. C'est la première validation à faire."
+        },
+        {
+          "id": "date-valide",
+          "label": "Vérifier que la date est valide",
+          "correct": true,
+          "feedback": "Oui, une date invalide planterait l'application. Validation essentielle."
+        },
+        {
+          "id": "date-passee",
+          "label": "Vérifier que la date n'est pas dans le passé",
+          "correct": true,
+          "feedback": "Bonne intuition — une date passée ne sert à rien pour un nouvel événement."
+        },
+        {
+          "id": "couleur",
+          "label": "Demander la couleur préférée de l'utilisateur",
+          "correct": false,
+          "feedback": "Non — la couleur préférée n'a rien à voir avec la validité des données de l'événement."
+        }
+      ]
+    },
+    {
+      "id": "etape-2",
+      "type": "journee",
+      "tag": "ÉTAPE 2",
+      "label_type": "Journée type",
+      "titre": "Passe maintenant à la journée d'un développeur.",
+      "sous_titre": "Découvre comment un développeur priorise, explique, relit et termine sa journée.",
+      "redirect": "/simulations/developpeur-1h/journee"
+    }
+  ]
+}
