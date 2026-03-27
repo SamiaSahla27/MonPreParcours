@@ -1,14 +1,26 @@
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useNavigate } from "react-router";
 import { SendHorizontal } from "lucide-react";
 import {
+  fetchIntroQuestions,
+  startOrientationSession,
+  completeOrientationSession,
+} from "../orientation/api";
+import {
   DEFAULT_VERDICT,
-  ORIENTATION_QUIZ_QUESTIONS,
   buildVerdictAsFirstMessage,
   getAssistantFollowUpReply,
 } from "../orientation/mockData";
-import { ChatMessage, QuizAnswer, SessionPhase } from "../orientation/types";
+import {
+  AdvisorVerdict,
+  ChatMessage,
+  EducationLevel,
+  QuestionStage,
+  QuizAnswer,
+  QuizQuestion,
+  SessionPhase,
+} from "../orientation/types";
 import { ChatMessageBubble } from "../orientation/components/ChatMessageBubble";
 import { ChoiceCard } from "../orientation/components/ChoiceCard";
 import { FuturisticThinking } from "../orientation/components/FuturisticThinking";
@@ -16,7 +28,6 @@ import { NeuralPulseCorner } from "../orientation/components/NeuralPulseCorner";
 import { SessionTopBar } from "../orientation/components/SessionTopBar";
 import { TypewriterText } from "../orientation/components/TypewriterText";
 
-const VERDICT_DELAY_MS = import.meta.env.MODE === "test" ? 0 : 1600;
 const ASSISTANT_REPLY_DELAY_MS = import.meta.env.MODE === "test" ? 0 : 900;
 
 function createMessageId(prefix: string): string {
@@ -28,7 +39,14 @@ export function OrientationIASession() {
 
   const [phase, setPhase] = useState<SessionPhase>("quiz");
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState<QuizAnswer[]>([]);
+  const [questionStage, setQuestionStage] = useState<QuestionStage>("intro");
+  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
+  const [introAnswers, setIntroAnswers] = useState<QuizAnswer[]>([]);
+  const [followUpAnswers, setFollowUpAnswers] = useState<QuizAnswer[]>([]);
+  const [questionLoading, setQuestionLoading] = useState(true);
+  const [questionError, setQuestionError] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [quizLocked, setQuizLocked] = useState(false);
   const [customAnswer, setCustomAnswer] = useState("");
   const [archived, setArchived] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -37,17 +55,26 @@ export function OrientationIASession() {
 
   const exportContainerRef = useRef<HTMLDivElement | null>(null);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
-  const generationTimeoutRef = useRef<number | null>(null);
   const replyTimeoutRef = useRef<number | null>(null);
 
-  const currentQuestion = ORIENTATION_QUIZ_QUESTIONS[currentQuestionIndex];
+  const currentQuestion = questions[currentQuestionIndex];
+  const stageAnswers = questionStage === "intro" ? introAnswers : followUpAnswers;
 
   const progressLabel = useMemo(() => {
-    if (phase !== "quiz") {
-      return `Quiz termine - ${answers.length}/${ORIENTATION_QUIZ_QUESTIONS.length} reponses`;
+    if (phase !== "quiz" || questions.length === 0) {
+      const total = introAnswers.length + followUpAnswers.length;
+      return `Quiz termine - ${total} reponses`;
     }
-    return `Question ${currentQuestionIndex + 1}/${ORIENTATION_QUIZ_QUESTIONS.length}`;
-  }, [answers.length, currentQuestionIndex, phase]);
+    const stageLabel = questionStage === "intro" ? "Profil" : "Precision";
+    return `Bloc ${stageLabel} - Question ${currentQuestionIndex + 1}/${questions.length}`;
+  }, [
+    phase,
+    questionStage,
+    currentQuestionIndex,
+    questions.length,
+    introAnswers.length,
+    followUpAnswers.length,
+  ]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -55,50 +82,142 @@ export function OrientationIASession() {
 
   useEffect(() => {
     return () => {
-      if (generationTimeoutRef.current) {
-        window.clearTimeout(generationTimeoutRef.current);
-      }
       if (replyTimeoutRef.current) {
         window.clearTimeout(replyTimeoutRef.current);
       }
     };
   }, []);
 
-  function triggerVerdict(archiveAfter = false) {
-    if (generationTimeoutRef.current) {
-      window.clearTimeout(generationTimeoutRef.current);
+  const loadIntroQuestions = useCallback(async () => {
+    setQuestionError(null);
+    setQuestionStage("intro");
+    setQuestions([]);
+    setCurrentQuestionIndex(0);
+    setIntroAnswers([]);
+    setFollowUpAnswers([]);
+    setSessionId(null);
+    setPhase("quiz");
+    setArchived(false);
+    setChatMessages([]);
+    setChatInput("");
+    setQuestionLoading(true);
+
+    try {
+      const response = await fetchIntroQuestions();
+      setQuestions(response.questions);
+    } catch (error) {
+      setQuestionError("Impossible de charger le questionnaire. Verifie l'API puis reessaie.");
+    } finally {
+      setQuestionLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadIntroQuestions();
+  }, [loadIntroQuestions]);
+
+  function presentVerdict(verdict: AdvisorVerdict, archiveAfter = false) {
+    setChatMessages((previous) => {
+      if (previous.length > 0) {
+        return previous;
+      }
+      return [buildVerdictAsFirstMessage(verdict)];
+    });
+    setPhase("chat");
+    if (archiveAfter) {
+      setArchived(true);
+    }
+  }
+
+  async function handleIntroCompletion(updatedAnswers: QuizAnswer[]) {
+    const educationAnswer = updatedAnswers.find((answer) => answer.questionId === "education-level");
+    const educationLevel = educationAnswer?.selectedOptionId as EducationLevel | undefined;
+
+    if (!educationLevel) {
+      setQuestionError("Merci de selectionner ton niveau d'etudes pour personnaliser la suite.");
+      setQuizLocked(false);
+      return;
     }
 
-    setPhase("generating");
-    generationTimeoutRef.current = window.setTimeout(() => {
-      setChatMessages((previous) => {
-        if (previous.length > 0) {
-          return previous;
-        }
-        return [buildVerdictAsFirstMessage(DEFAULT_VERDICT)];
+    setQuestionError(null);
+    setQuestionLoading(true);
+
+    try {
+      const response = await startOrientationSession({
+        educationLevel,
+        initialAnswers: updatedAnswers,
       });
-      setPhase("chat");
-      if (archiveAfter) {
-        setArchived(true);
-      }
-    }, VERDICT_DELAY_MS);
+      setSessionId(response.sessionId);
+      setQuestionStage(response.stage);
+      setQuestions(response.questions);
+      setCurrentQuestionIndex(0);
+      setCustomAnswer("");
+      setFollowUpAnswers([]);
+      setPhase("quiz");
+    } catch (error) {
+      setQuestionError("Impossible de charger les questions suivantes. Reessaie dans un instant.");
+    } finally {
+      setQuestionLoading(false);
+      setQuizLocked(false);
+    }
+  }
+
+  async function handleFollowUpCompletion(updatedAnswers: QuizAnswer[]) {
+    if (!sessionId) {
+      setQuestionError("La session a expire. Relance le questionnaire.");
+      setQuizLocked(false);
+      return;
+    }
+
+    setQuestionError(null);
+    setPhase("generating");
+
+    try {
+      const { verdict } = await completeOrientationSession(sessionId, {
+        followUpAnswers: updatedAnswers,
+      });
+      presentVerdict(verdict ?? DEFAULT_VERDICT);
+    } catch (error) {
+      setQuestionError(
+        "Impossible de generer la recommandation personnalisee. Affichage du plan generique."
+      );
+      presentVerdict(DEFAULT_VERDICT);
+    } finally {
+      setQuizLocked(false);
+      setSessionId(null);
+    }
   }
 
   function goToNextStep(answer: QuizAnswer) {
-    setAnswers((previous) => [...previous, answer]);
-    setCustomAnswer("");
+    if (!currentQuestion) {
+      return;
+    }
 
-    const isLastQuestion = currentQuestionIndex >= ORIENTATION_QUIZ_QUESTIONS.length - 1;
+    const updatedAnswers = [...stageAnswers, answer];
+
+    if (questionStage === "intro") {
+      setIntroAnswers(updatedAnswers);
+    } else {
+      setFollowUpAnswers(updatedAnswers);
+    }
+
+    const isLastQuestion = currentQuestionIndex >= questions.length - 1;
     if (isLastQuestion) {
-      triggerVerdict(false);
+      setQuizLocked(true);
+      if (questionStage === "intro") {
+        void handleIntroCompletion(updatedAnswers);
+      } else {
+        void handleFollowUpCompletion(updatedAnswers);
+      }
       return;
     }
 
     setCurrentQuestionIndex((prev) => prev + 1);
+    setCustomAnswer("");
   }
 
   function handleOptionChoice(optionId: string, optionLabel: string) {
-    if (!currentQuestion) {
+    if (!currentQuestion || quizLocked) {
       return;
     }
 
@@ -112,7 +231,7 @@ export function OrientationIASession() {
   function handleCustomAnswerSubmit(event: FormEvent) {
     event.preventDefault();
     const trimmed = customAnswer.trim();
-    if (!trimmed || !currentQuestion) {
+    if (!trimmed || !currentQuestion || quizLocked) {
       return;
     }
 
@@ -132,7 +251,8 @@ export function OrientationIASession() {
       return;
     }
 
-    triggerVerdict(true);
+    setPhase("generating");
+    presentVerdict(DEFAULT_VERDICT, true);
   }
 
   function handleSendMessage(event: FormEvent) {
@@ -243,63 +363,91 @@ export function OrientationIASession() {
           </div>
         ) : null}
 
+        {questionError ? (
+          <div className="no-print mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+            <p>{questionError}</p>
+            {phase === "quiz" && questionStage === "intro" ? (
+              <button
+                type="button"
+                onClick={() => void loadIntroQuestions()}
+                className="mt-2 rounded-xl border border-rose-300 px-3 py-1 text-xs font-semibold text-rose-900"
+              >
+                Recharger le questionnaire
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+
         <main ref={exportContainerRef} className="mt-4 flex flex-1 flex-col">
           <AnimatePresence mode="wait">
-            {phase === "quiz" && currentQuestion ? (
-              <motion.section
-                key="quiz"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.3 }}
-                className="mx-auto my-auto w-full max-w-4xl rounded-3xl border border-indigo-200/60 bg-white/70 p-6 shadow-[0_20px_70px_rgba(92,65,188,0.14)] backdrop-blur-xl md:p-8"
-              >
-                <div className="mb-6 flex items-center justify-between gap-3">
-                  <span className="rounded-full bg-indigo-100 px-3 py-1 text-xs font-bold uppercase tracking-[0.11em] text-indigo-700">
-                    Session active
-                  </span>
-                  <span className="text-sm font-semibold text-indigo-800">{progressLabel}</span>
-                </div>
+            {phase === "quiz" ? (
+              questionLoading ? (
+                <motion.section
+                  key="quiz-loading"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.3 }}
+                  className="mx-auto my-auto flex w-full max-w-4xl items-center justify-center"
+                >
+                  <FuturisticThinking />
+                </motion.section>
+              ) : currentQuestion ? (
+                <motion.section
+                  key="quiz"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.3 }}
+                  className="mx-auto my-auto w-full max-w-4xl rounded-3xl border border-indigo-200/60 bg-white/70 p-6 shadow-[0_20px_70px_rgba(92,65,188,0.14)] backdrop-blur-xl md:p-8"
+                >
+                  <div className="mb-6 flex items-center justify-between gap-3">
+                    <span className="rounded-full bg-indigo-100 px-3 py-1 text-xs font-bold uppercase tracking-[0.11em] text-indigo-700">
+                      Session active
+                    </span>
+                    <span className="text-sm font-semibold text-indigo-800">{progressLabel}</span>
+                  </div>
 
-                <div className="rounded-2xl border border-indigo-200/60 bg-white/80 px-5 py-6">
-                  <TypewriterText
-                    text={currentQuestion.prompt}
-                    className="text-center text-2xl font-extrabold leading-tight text-indigo-950"
-                  />
-                  <p data-testid="quiz-question-full" className="sr-only">
-                    {currentQuestion.prompt}
-                  </p>
-                </div>
-
-                <div className="mt-6 grid gap-3 md:grid-cols-2">
-                  {currentQuestion.options.map((option) => (
-                    <ChoiceCard
-                      key={option.id}
-                      label={option.label}
-                      helper={option.helper}
-                      onClick={() => handleOptionChoice(option.id, option.label)}
+                  <div className="rounded-2xl border border-indigo-200/60 bg-white/80 px-5 py-6">
+                    <TypewriterText
+                      text={currentQuestion.prompt}
+                      className="text-center text-2xl font-extrabold leading-tight text-indigo-950"
                     />
-                  ))}
-                </div>
+                    <p data-testid="quiz-question-full" className="sr-only">
+                      {currentQuestion.prompt}
+                    </p>
+                  </div>
 
-                <form onSubmit={handleCustomAnswerSubmit} className="mt-5 space-y-3">
-                  <label className="text-sm font-semibold text-indigo-900">
-                    Tu peux aussi ecrire une reponse libre
-                  </label>
-                  <textarea
-                    value={customAnswer}
-                    onChange={(event) => setCustomAnswer(event.target.value)}
-                    placeholder={currentQuestion.inputPlaceholder}
-                    className="min-h-24 w-full rounded-2xl border border-indigo-200/70 bg-white px-4 py-3 text-sm text-indigo-950 outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-200/40"
-                  />
-                  <button
-                    type="submit"
-                    className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-indigo-700"
-                  >
-                    Valider cette reponse
-                  </button>
-                </form>
-              </motion.section>
+                  <div className="mt-6 grid gap-3 md:grid-cols-2">
+                    {currentQuestion.options.map((option) => (
+                      <ChoiceCard
+                        key={option.id}
+                        label={option.label}
+                        helper={option.helper}
+                        onClick={() => handleOptionChoice(option.id, option.label)}
+                      />
+                    ))}
+                  </div>
+
+                  <form onSubmit={handleCustomAnswerSubmit} className="mt-5 space-y-3">
+                    <label className="text-sm font-semibold text-indigo-900">
+                      Tu peux aussi ecrire une reponse libre
+                    </label>
+                    <textarea
+                      value={customAnswer}
+                      onChange={(event) => setCustomAnswer(event.target.value)}
+                      placeholder={currentQuestion.inputPlaceholder}
+                      className="min-h-24 w-full rounded-2xl border border-indigo-200/70 bg-white px-4 py-3 text-sm text-indigo-950 outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-200/40"
+                    />
+                    <button
+                      type="submit"
+                      className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-indigo-700"
+                    >
+                      Valider cette reponse
+                    </button>
+                  </form>
+                </motion.section>
+              ) : null
             ) : null}
 
             {phase === "generating" ? (

@@ -1,22 +1,24 @@
-export type SessionPhase = "quiz" | "generating" | "chat";
-export type QuestionStage = "intro" | "follow-up";
+export type EducationLevel =
+  | 'college'
+  | 'lycee'
+  | 'terminal'
+  | 'bac_plus_2'
+  | 'reconversion';
 
-export type EducationLevel = "college" | "lycee" | "terminal" | "bac_plus_2" | "reconversion";
-
-export interface QuizOption {
+export interface OrientationQuizOption {
   id: string;
   label: string;
   helper?: string;
 }
 
-export interface QuizQuestion {
+export interface OrientationQuizQuestion {
   id: string;
   prompt: string;
-  options: QuizOption[];
   inputPlaceholder: string;
+  options: OrientationQuizOption[];
 }
 
-export interface QuizAnswer {
+export interface OrientationQuizAnswer {
   questionId: string;
   selectedOptionId?: string;
   selectedOptionLabel?: string;
@@ -31,13 +33,11 @@ export interface TimelineStep {
   milestones: string[];
 }
 
-export type SchoolType = "Public" | "Prive";
-
 export interface SchoolRecommendation {
   id: string;
   name: string;
   city: string;
-  status: SchoolType;
+  status: 'Public' | 'Prive';
   program: string;
   duration: string;
   annualCost: string;
@@ -54,30 +54,21 @@ export interface AdvisorVerdict {
   schools: SchoolRecommendation[];
 }
 
-export interface ChatAttachment {
-  type: "timeline" | "schools";
-  timeline?: TimelineStep[];
-  schools?: SchoolRecommendation[];
-}
-
-export type ChatRole = "assistant" | "user" | "system";
-
-export interface ChatMessage {
+export interface OrientationSession {
   id: string;
-  role: ChatRole;
-  content: string;
-  createdAt: string;
-  attachments?: ChatAttachment[];
+  educationLevel: EducationLevel;
+  answers: OrientationQuizAnswer[];
+  createdAt: Date;
 }
 
 export interface OrientationQuestionsResponse {
-  stage: QuestionStage;
-  questions: QuizQuestion[];
+  stage: 'intro' | 'follow-up';
+  questions: OrientationQuizQuestion[];
 }
 
 export interface CreateOrientationSessionInput {
   educationLevel: EducationLevel;
-  initialAnswers: QuizAnswer[];
+  initialAnswers: OrientationQuizAnswer[];
   contextNotes?: string;
 }
 
@@ -86,7 +77,7 @@ export interface OrientationSessionStartResponse extends OrientationQuestionsRes
 }
 
 export interface CompleteOrientationSessionInput {
-  followUpAnswers: QuizAnswer[];
+  followUpAnswers: OrientationQuizAnswer[];
   studentNotes?: string;
 }
 
@@ -94,3 +85,9 @@ export interface OrientationVerdictResponse {
   verdict: AdvisorVerdict;
 }
 
+export interface OrientationGroqPayload {
+  educationLevel: EducationLevel;
+  answers: OrientationQuizAnswer[];
+  followUpAnswers: OrientationQuizAnswer[];
+  studentNotes?: string;
+}
