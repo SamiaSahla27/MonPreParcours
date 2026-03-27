@@ -21,6 +21,15 @@ export type CallSession = {
   updatedAt: number;
 };
 
+export type MentorNotification = {
+  conversationId: string;
+  mentorId: string;
+  etudiantId: string;
+  type: "contact" | "message" | "call";
+  previewText?: string;
+  createdAt: string;
+};
+
 type ConversationHistory = { conversationId: string; messages: ChatMessage[] };
 
 type SignalEvent = { conversationId: string; fromUserId: string; data: unknown };
@@ -72,8 +81,16 @@ export class RealtimeClient {
     this.socket.on("call.ended", cb);
   }
 
+  onCallAccepted(cb: (p: { conversationId: string }) => void) {
+    this.socket.on("call.accepted", cb);
+  }
+
   onSignal(cb: (s: SignalEvent) => void) {
     this.socket.on("webrtc.signal", cb);
+  }
+
+  onMentorNotification(cb: (n: MentorNotification) => void) {
+    this.socket.on("mentor.notification", cb);
   }
 
   async registerPresence() {
@@ -96,6 +113,10 @@ export class RealtimeClient {
     return await this.emitAsync("call.connected", payload);
   }
 
+  async acceptCall(payload: { conversationId: string }) {
+    return await this.emitAsync("call.accept", payload);
+  }
+
   async endCall(payload: { conversationId: string; reason?: "ended" | "missed" }) {
     return await this.emitAsync("call.end", payload);
   }
@@ -111,7 +132,14 @@ export class RealtimeClient {
   private emitAsync<T>(event: string, payload?: unknown): Promise<T> {
     return new Promise((resolve, reject) => {
       this.socket.timeout(8000).emit(event, payload, (err: unknown, res: T) => {
-        if (err) reject(err);
+        if (err) {
+          const message =
+            typeof err === "string"
+              ? err
+              : (err as any)?.message || (err as any)?.toString?.() || "SOCKET_ERROR";
+          reject(new Error(message));
+          return;
+        }
         else resolve(res);
       });
     });
