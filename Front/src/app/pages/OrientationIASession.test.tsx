@@ -3,7 +3,11 @@ import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { OrientationQuestionsResponse } from "../orientation/types";
 import { OrientationIASession } from "./OrientationIASession";
-
+import {
+    PRE_PROFILE_GENERIC_QUESTIONS,
+    getMockAiGeneratedQuestionsBySegment,
+    getPhase1QuestionsBySegment,
+} from "../orientation/mockData";
 function renderSession() {
   return render(
     <MemoryRouter>
@@ -50,18 +54,79 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function clickChoiceByLabel(label: string) {
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: new RegExp(escapeRegExp(label), "i"),
+    })
+  );
+}
+
+function clickSubmitByLabel(label: string) {
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: new RegExp(escapeRegExp(label), "i"),
+    })
+  );
+}
+
+async function completeGenericQuestions() {
+  for (const question of PRE_PROFILE_GENERIC_QUESTIONS) {
+    await waitFor(() => {
+      expect(screen.getByTestId("quiz-question-full").textContent).toContain(question.questionText);
+    });
+
+    clickChoiceByLabel(question.options[0].title);
+    clickSubmitByLabel(question.ui_config.submitButtonText);
+  }
+}
+
+async function completeSegmentAndPhase1(segment: "lyceen") {
+  await completeGenericQuestions();
+
+  await waitFor(() => {
+    expect(screen.getByTestId("quiz-question-full").textContent).toContain(
+      "Quel est ton type de personnalite ?"
+    );
+  });
+
+  clickChoiceByLabel("Lyceen");
+  clickSubmitByLabel("Demarrer le profil");
+
+  const phase1Questions = getPhase1QuestionsBySegment(segment);
+
+  for (const question of phase1Questions) {
+    await waitFor(() => {
+      expect(screen.getByTestId("quiz-question-full").textContent).toContain(question.questionText);
+    });
+
+    if (question.options[0]) {
+      clickChoiceByLabel(question.options[0].title);
+    }
+
+    clickSubmitByLabel(question.ui_config.submitButtonText);
+  }
+}
+
 describe("OrientationIASession", () => {
   it("renders the initial immersive quiz state", async () => {
+  it("renders the first generic question before profile selection", () => {
     renderSession();
 
     expect(await screen.findByText("Session active")).toBeInTheDocument();
     expect(await screen.findByTestId("quiz-question-full")).toHaveTextContent(
-      INTRO_RESPONSE.questions[0].prompt
+      INTRO_RESPONSE.questions[0].prompt);
+    expect(screen.getByText("Session active")).toBeTruthy();
+    expect(screen.getByTestId("quiz-question-full").textContent).toContain(
+      PRE_PROFILE_GENERIC_QUESTIONS[0].questionText
     );
-    expect(screen.getByText("Cloturer la session")).toBeInTheDocument();
   });
 
-  it("moves from one quiz question to the next after selecting a choice", async () => {
+  it("shows profile selection only after 10 generic questions", async () => {
     renderSession();
 
     fireEvent.click(
@@ -69,25 +134,77 @@ describe("OrientationIASession", () => {
         name: /Lycee/i,
       })
     );
+    await completeGenericQuestions();
 
     await waitFor(() => {
-      expect(screen.getByTestId("quiz-question-full")).toHaveTextContent(
-        INTRO_RESPONSE.questions[1].prompt
+      expect(screen.getByTestId("quiz-question-full").textContent).toContain(
+        "Quel est ton type de personnalite ?"
       );
     });
   });
 
-  it("closes and archives the session when clicking close", async () => {
+  it("allows going back in quiz phase before IA questions", async () => {
+    renderSession();
+
+    await completeGenericQuestions();
+
+    await waitFor(() => {
+      expect(screen.getByTestId("quiz-question-full").textContent).toContain(
+        "Quel est ton type de personnalite ?"
+      );
+    });
+
+    clickChoiceByLabel("Lyceen");
+    clickSubmitByLabel("Demarrer le profil");
+
+    const firstPhase1 = getPhase1QuestionsBySegment("lyceen")[0];
+
+    await waitFor(() => {
+      expect(screen.getByTestId("quiz-question-full").textContent).toContain(firstPhase1.questionText);
+    });
+
+    clickSubmitByLabel("Question precedente");
+
+    await waitFor(() => {
+      expect(screen.getByTestId("quiz-question-full")).toHaveTextContent(
+        INTRO_RESPONSE.questions[1].prompt);
+      expect(screen.getByTestId("quiz-question-full").textContent).toContain(
+        "Quel est ton type de personnalite ?"
+      );
+    });
+  });
+
+  it("shows 3 IA questions then the dashboard template", async () => {
     renderSession();
 
     await screen.findByText("Session active");
     fireEvent.click(screen.getByRole("button", { name: /Cloturer la session/i }));
+    await completeSegmentAndPhase1("lyceen");
+
+    const aiQuestions = getMockAiGeneratedQuestionsBySegment("lyceen", 3);
 
     await waitFor(() => {
-      expect(
-        screen.getByText("Cette session est terminee et archivee.")
-      ).toBeInTheDocument();
+      expect(screen.getByTestId("quiz-question-full").textContent).toContain(aiQuestions[0].questionText);
     });
+
+    expect(screen.queryByRole("button", { name: /Question precedente/i })).toBeNull();
+
+    for (const question of aiQuestions) {
+      await waitFor(() => {
+        expect(screen.getByTestId("quiz-question-full").textContent).toContain(question.questionText);
+      });
+
+      clickChoiceByLabel(question.options[0].title);
+      clickSubmitByLabel(question.ui_config.submitButtonText);
+    }
+
+    await waitFor(() => {
+      expect(screen.getByText(/Dashboard de restitution Orientation IA/i)).toBeTruthy();
+    });
+  }, 20000);
+
+  it("requires a modification prompt before creating a new generation", async () => {
+    renderSession();
 
     expect(
       screen.getByRole("button", { name: /Exporter en PDF/i })
@@ -95,4 +212,43 @@ describe("OrientationIASession", () => {
     expect(screen.getByRole("button", { name: /Imprimer/i })).toBeInTheDocument();
   });
 
+});
+    await completeSegmentAndPhase1("lyceen");
+
+    const aiQuestions = getMockAiGeneratedQuestionsBySegment("lyceen", 3);
+    for (const question of aiQuestions) {
+      await waitFor(() => {
+        expect(screen.getByTestId("quiz-question-full").textContent).toContain(question.questionText);
+      });
+
+      clickChoiceByLabel(question.options[0].title);
+      clickSubmitByLabel(question.ui_config.submitButtonText);
+    }
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Recherche #1/i })).toBeTruthy();
+      expect(screen.getByRole("button", { name: /Recherche #2/i })).toBeTruthy();
+    });
+
+    expect(screen.queryByRole("button", { name: /^Envoyer$/i })).toBeNull();
+    expect(screen.queryByPlaceholderText(/Pose une question sur ton parcours/i)).toBeNull();
+
+    clickSubmitByLabel("Nouvelle generation");
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Precise ce que tu veux modifier avant de generer un nouveau resultat/i)
+      ).toBeTruthy();
+    });
+
+    fireEvent.change(
+      screen.getByPlaceholderText(/Ex: Renforcer les options en alternance/i),
+      { target: { value: "Je veux plus d'options publiques en alternance" } }
+    );
+    clickSubmitByLabel("Nouvelle generation");
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Recherche #3/i })).toBeTruthy();
+    });
+  }, 20000);
 });

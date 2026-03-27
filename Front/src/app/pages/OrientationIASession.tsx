@@ -7,8 +7,14 @@ import {
   startOrientationSession,
   completeOrientationSession,
 } from "../orientation/api";
+import { ChevronLeft, Plus } from "lucide-react";
 import {
   DEFAULT_VERDICT,
+  PRE_PROFILE_GENERIC_QUESTIONS,
+  SEGMENT_PROFILE_OPTIONS,
+  getMockAiGeneratedQuestionsBySegment,
+  getPhase1QuestionsBySegment,
+  getSegmentLabel,
   buildVerdictAsFirstMessage,
   getAssistantFollowUpReply,
 } from "../orientation/mockData";
@@ -22,6 +28,19 @@ import {
   SessionPhase,
 } from "../orientation/types";
 import { ChatMessageBubble } from "../orientation/components/ChatMessageBubble";
+import {
+  BaseOrientationQuestion,
+  OrientationSegment,
+  PhaseQuestion,
+  PhaseQuestionAnswer,
+  SessionPhase,
+} from "../orientation/types";
+import {
+  OrientationResultSession,
+  SchoolRecommendationCard,
+  buildNextMockSession,
+  createBaseResultSessions,
+} from "../orientation/data/dashboardMock";
 import { ChoiceCard } from "../orientation/components/ChoiceCard";
 import { FuturisticThinking } from "../orientation/components/FuturisticThinking";
 import { NeuralPulseCorner } from "../orientation/components/NeuralPulseCorner";
@@ -29,13 +48,128 @@ import { SessionTopBar } from "../orientation/components/SessionTopBar";
 import { TypewriterText } from "../orientation/components/TypewriterText";
 
 const ASSISTANT_REPLY_DELAY_MS = import.meta.env.MODE === "test" ? 0 : 900;
+const viteMode = (import.meta as ImportMeta & { env?: { MODE?: string } }).env?.MODE;
+const VERDICT_DELAY_MS = viteMode === "test" ? 0 : 1600;
 
-function createMessageId(prefix: string): string {
-  return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+const SEGMENT_SELECTION_QUESTION: PhaseQuestion = {
+  id: "SEGMENT-SELECT",
+  db_key: "type_personnalite",
+  type: "single",
+  segment: "lyceen",
+  questionText: "Quel est ton type de personnalite ?",
+  subText: "Choisis le profil qui te correspond pour definir la phase specialisee",
+  options: SEGMENT_PROFILE_OPTIONS.map((option) => ({
+    title: option.label,
+    value: option.segment,
+    subtitle: option.helper,
+  })),
+  ui_config: {
+    allowFreeText: false,
+    submitButtonText: "Demarrer le profil",
+    helperNote: "Le profil active des questions specifiques a ton niveau.",
+  },
+};
+
+const pageFadeTransition = {
+  duration: 0.3,
+  ease: [0.16, 1, 0.3, 1] as const,
+};
+
+const timelineContainerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.12,
+    },
+  },
+};
+
+const timelineStepVariants = {
+  hidden: { opacity: 0, y: 14 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.28,
+      ease: [0.16, 1, 0.3, 1] as const,
+    },
+  },
+};
+
+function getSchoolStatusBadgeStyles(status: SchoolRecommendationCard["status"]): string {
+  return status === "Prive"
+    ? "border-amber-200 bg-amber-100 text-amber-900"
+    : "border-emerald-200 bg-emerald-100 text-emerald-800";
+}
+
+function getSchoolConclusionStyles(status: SchoolRecommendationCard["status"]): string {
+  return status === "Prive"
+    ? "border-amber-200 bg-amber-50 text-amber-950"
+    : "border-emerald-200 bg-emerald-50 text-emerald-950";
+}
+
+function ConfidenceGauge({ confidence }: { confidence: number }) {
+  const degrees = Math.min(100, Math.max(0, confidence)) * 3.6;
+
+  return (
+    <div className="flex flex-col items-center gap-2" aria-label={`Niveau de confiance ${confidence}%`}>
+      <div
+        className="relative h-28 w-28 rounded-full"
+        style={{
+          background: `conic-gradient(#5f63ff ${degrees}deg, #e6e8ff ${degrees}deg 360deg)`,
+        }}
+      >
+        <div className="absolute inset-[7px] grid place-items-center rounded-full border border-indigo-100/80 bg-white shadow-[inset_0_4px_22px_rgba(91,99,255,0.12)]">
+          <span className="text-xl font-extrabold text-indigo-900">{confidence}%</span>
+        </div>
+      </div>
+      <span className="text-xs font-semibold uppercase tracking-[0.12em] text-indigo-700">
+        Niveau de confiance
+      </span>
+    </div>
+  );
+}
+
+function SessionTabs({
+  sessions,
+  activeSessionId,
+  onSelect,
+}: {
+  sessions: OrientationResultSession[];
+  activeSessionId: string;
+  onSelect: (sessionId: string) => void;
+}) {
+  return (
+    <div className="mt-6 overflow-x-auto pb-2">
+      <div className="inline-flex min-w-full gap-2 rounded-2xl border border-indigo-100 bg-white/80 p-2 shadow-[0_10px_35px_rgba(54,55,100,0.08)]">
+        {sessions.map((session) => {
+          const isActive = session.id === activeSessionId;
+
+          return (
+            <button
+              key={session.id}
+              type="button"
+              onClick={() => onSelect(session.id)}
+              className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                isActive
+                  ? "bg-indigo-600 text-white shadow-[0_10px_24px_rgba(63,71,235,0.35)]"
+                  : "bg-white text-indigo-900 hover:bg-indigo-50"
+              }`}
+              aria-pressed={isActive}
+            >
+              {session.tabLabel}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 export function OrientationIASession() {
   const navigate = useNavigate();
+  const genericQuestionCount = PRE_PROFILE_GENERIC_QUESTIONS.length;
 
   const [phase, setPhase] = useState<SessionPhase>("quiz");
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -47,23 +181,102 @@ export function OrientationIASession() {
   const [questionError, setQuestionError] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [quizLocked, setQuizLocked] = useState(false);
+  const [selectedSegment, setSelectedSegment] = useState<OrientationSegment | null>(null);
+  const [quizQuestionIndex, setQuizQuestionIndex] = useState(0);
+  const [aiQuestionIndex, setAiQuestionIndex] = useState(0);
+  const [quizAnswers, setQuizAnswers] = useState<PhaseQuestionAnswer[]>([]);
+  const [aiAnswers, setAiAnswers] = useState<PhaseQuestionAnswer[]>([]);
+  const [selectedOptionValues, setSelectedOptionValues] = useState<string[]>([]);
   const [customAnswer, setCustomAnswer] = useState("");
   const [archived, setArchived] = useState(false);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [chatInput, setChatInput] = useState("");
-  const [assistantTyping, setAssistantTyping] = useState(false);
+  const [resultSessions, setResultSessions] = useState<OrientationResultSession[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState("");
+  const [generationPrompt, setGenerationPrompt] = useState("");
+  const [generationError, setGenerationError] = useState("");
 
   const exportContainerRef = useRef<HTMLDivElement | null>(null);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const replyTimeoutRef = useRef<number | null>(null);
+  const generationTimeoutRef = useRef<number | null>(null);
+
+  const phase1Questions = useMemo(() => {
+    if (!selectedSegment) {
+      return [];
+    }
+
+    return getPhase1QuestionsBySegment(selectedSegment);
+  }, [selectedSegment]);
+
+  const aiGeneratedQuestions = useMemo(() => {
+    if (!selectedSegment) {
+      return [];
+    }
+
+    return getMockAiGeneratedQuestionsBySegment(selectedSegment, 3);
+  }, [selectedSegment]);
 
   const currentQuestion = questions[currentQuestionIndex];
   const stageAnswers = questionStage === "intro" ? introAnswers : followUpAnswers;
+  const currentQuestion = useMemo(() => {
+    if (phase === "quiz") {
+      if (quizQuestionIndex < genericQuestionCount) {
+        return PRE_PROFILE_GENERIC_QUESTIONS[quizQuestionIndex] ?? null;
+      }
+
+      if (quizQuestionIndex === genericQuestionCount) {
+        return SEGMENT_SELECTION_QUESTION;
+      }
+
+      if (!selectedSegment) {
+        return null;
+      }
+
+      return phase1Questions[quizQuestionIndex - genericQuestionCount - 1] ?? null;
+    }
+
+    if (phase === "ai-quiz") {
+      return aiGeneratedQuestions[aiQuestionIndex] ?? null;
+    }
+
+    return null;
+  }, [aiGeneratedQuestions, aiQuestionIndex, genericQuestionCount, phase, phase1Questions, quizQuestionIndex, selectedSegment]);
+
+  const activeSession = useMemo(() => {
+    return resultSessions.find((session) => session.id === activeSessionId) ?? resultSessions[0];
+  }, [activeSessionId, resultSessions]);
+
+  const canGoBack = phase === "quiz" && quizQuestionIndex > 0 && !archived;
 
   const progressLabel = useMemo(() => {
     if (phase !== "quiz" || questions.length === 0) {
       const total = introAnswers.length + followUpAnswers.length;
       return `Quiz termine - ${total} reponses`;
+    if (phase === "quiz") {
+      const total = genericQuestionCount + 1 + phase1Questions.length;
+      return `Question ${Math.min(quizQuestionIndex + 1, total)}/${total}`;
+    }
+
+    if (phase === "ai-quiz") {
+      const total = Math.max(aiGeneratedQuestions.length, 1);
+      return `Questions IA ${Math.min(aiQuestionIndex + 1, total)}/${total}`;
+    }
+
+    if (phase === "generating") {
+      return "Analyse IA en cours";
+    }
+
+    return `Resultats: ${resultSessions.length} generation(s)`;
+  }, [aiGeneratedQuestions.length, aiQuestionIndex, genericQuestionCount, phase, phase1Questions.length, quizQuestionIndex, resultSessions.length]);
+
+  const canSubmitCurrentQuestion = useMemo(() => {
+    if (!currentQuestion) {
+      return false;
+    }
+
+    const trimmed = customAnswer.trim();
+
+    if (currentQuestion.type === "libre") {
+      return trimmed.length > 0;
     }
     const stageLabel = questionStage === "intro" ? "Profil" : "Precision";
     return `Bloc ${stageLabel} - Question ${currentQuestionIndex + 1}/${questions.length}`;
@@ -76,14 +289,32 @@ export function OrientationIASession() {
     followUpAnswers.length,
   ]);
 
+    if (selectedOptionValues.length > 0) {
+      return true;
+    }
+
+    if (currentQuestion.ui_config.allowFreeText) {
+      return trimmed.length > 0;
+    }
+
+    return false;
+  }, [currentQuestion, customAnswer, selectedOptionValues.length]);
+
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [chatMessages, assistantTyping, phase]);
+    const storedAnswer =
+      phase === "quiz" ? quizAnswers[quizQuestionIndex] : phase === "ai-quiz" ? aiAnswers[aiQuestionIndex] : undefined;
+
+    setSelectedOptionValues(storedAnswer?.selectedValues ?? []);
+    setCustomAnswer(storedAnswer?.freeText ?? "");
+  }, [aiAnswers, aiQuestionIndex, phase, quizAnswers, quizQuestionIndex]);
 
   useEffect(() => {
     return () => {
       if (replyTimeoutRef.current) {
         window.clearTimeout(replyTimeoutRef.current);
+      }
+      if (generationTimeoutRef.current) {
+        window.clearTimeout(generationTimeoutRef.current);
       }
     };
   }, []);
@@ -115,7 +346,32 @@ export function OrientationIASession() {
   useEffect(() => {
     loadIntroQuestions();
   }, [loadIntroQuestions]);
+  function clearGenerationTimeout() {
+    if (generationTimeoutRef.current) {
+      window.clearTimeout(generationTimeoutRef.current);
+      generationTimeoutRef.current = null;
+    }
+  }
 
+  function triggerVerdict(archiveAfter = false, segmentOverride?: OrientationSegment | null) {
+    clearGenerationTimeout();
+    const effectiveSegment = segmentOverride ?? selectedSegment;
+
+    setPhase("generating");
+    generationTimeoutRef.current = window.setTimeout(() => {
+      const segmentLabel = effectiveSegment ? getSegmentLabel(effectiveSegment) : undefined;
+      const baseSessions = createBaseResultSessions(DEFAULT_VERDICT, segmentLabel);
+
+      setResultSessions(baseSessions);
+      setActiveSessionId(baseSessions[0]?.id ?? "");
+      setGenerationPrompt("");
+      setGenerationError("");
+      setPhase("chat");
+
+      if (archiveAfter) {
+        setArchived(true);
+      }
+    }, VERDICT_DELAY_MS);
   function presentVerdict(verdict: AdvisorVerdict, archiveAfter = false) {
     setChatMessages((previous) => {
       if (previous.length > 0) {
@@ -139,6 +395,9 @@ export function OrientationIASession() {
       return;
     }
 
+  function triggerAiQuestionPhase(segment: OrientationSegment) {
+    clearGenerationTimeout();
+    setPhase("generating");
     setQuestionError(null);
     setQuestionLoading(true);
 
@@ -193,6 +452,13 @@ export function OrientationIASession() {
       return;
     }
 
+    generationTimeoutRef.current = window.setTimeout(() => {
+      const generated = getMockAiGeneratedQuestionsBySegment(segment, 3);
+
+      if (generated.length === 0) {
+        triggerVerdict(false, segment);
+        return;
+      }
     const updatedAnswers = [...stageAnswers, answer];
 
     if (questionStage === "intro") {
@@ -212,33 +478,154 @@ export function OrientationIASession() {
       return;
     }
 
+      setAiAnswers([]);
+      setAiQuestionIndex(0);
+      setPhase("ai-quiz");
+    }, VERDICT_DELAY_MS);
     setCurrentQuestionIndex((prev) => prev + 1);
     setCustomAnswer("");
   }
 
+  function toggleOptionValue(value: string) {
+    if (!currentQuestion) {
   function handleOptionChoice(optionId: string, optionLabel: string) {
     if (!currentQuestion || quizLocked) {
       return;
     }
 
-    goToNextStep({
-      questionId: currentQuestion.id,
-      selectedOptionId: optionId,
-      selectedOptionLabel: optionLabel,
-    });
-  }
-
-  function handleCustomAnswerSubmit(event: FormEvent) {
-    event.preventDefault();
-    const trimmed = customAnswer.trim();
-    if (!trimmed || !currentQuestion || quizLocked) {
+    if (currentQuestion.type === "single") {
+      setSelectedOptionValues([value]);
       return;
     }
 
-    goToNextStep({
-      questionId: currentQuestion.id,
-      freeText: trimmed,
+    if (currentQuestion.type !== "multi") {
+      return;
+    }
+
+    const maxSelections = currentQuestion.ui_config.maxSelections ?? 2;
+
+    setSelectedOptionValues((previous) => {
+      if (previous.includes(value)) {
+        return previous.filter((item) => item !== value);
+      }
+
+      if (previous.length >= maxSelections) {
+        return previous;
+      }
+
+      return [...previous, value];
     });
+  }
+
+  function buildCurrentAnswer(question: BaseOrientationQuestion): PhaseQuestionAnswer {
+    const selectedTitles = question.options
+      .filter((option) => selectedOptionValues.includes(option.value))
+      .map((option) => option.title);
+    const trimmed = customAnswer.trim();
+
+    return {
+      questionId: question.id,
+      dbKey: question.db_key,
+      selectedValues: selectedOptionValues,
+      selectedTitles,
+      freeText: trimmed.length > 0 ? trimmed : undefined,
+    };
+  }
+
+  function saveCurrentAnswer(answer: PhaseQuestionAnswer) {
+    if (phase === "quiz") {
+      setQuizAnswers((previous) => {
+        const next = [...previous];
+        next[quizQuestionIndex] = answer;
+
+        return next.slice(0, quizQuestionIndex + 1);
+      });
+
+      return;
+    }
+
+    if (phase === "ai-quiz") {
+      setAiAnswers((previous) => {
+        const next = [...previous];
+        next[aiQuestionIndex] = answer;
+
+        return next.slice(0, aiQuestionIndex + 1);
+      });
+    }
+  }
+
+  function handleQuestionSubmit(event: FormEvent) {
+    event.preventDefault();
+    const trimmed = customAnswer.trim();
+    if (!trimmed || !currentQuestion || quizLocked) {
+
+    if (!currentQuestion || archived || !canSubmitCurrentQuestion) {
+      return;
+    }
+
+    const answer = buildCurrentAnswer(currentQuestion);
+    saveCurrentAnswer(answer);
+
+    if (phase === "quiz") {
+      if (quizQuestionIndex < genericQuestionCount) {
+        setQuizQuestionIndex((previous) => previous + 1);
+        return;
+      }
+
+      if (quizQuestionIndex === genericQuestionCount) {
+        const segmentValue = answer.selectedValues[0] as OrientationSegment | undefined;
+
+        if (!segmentValue) {
+          return;
+        }
+
+        setSelectedSegment(segmentValue);
+        setQuizAnswers((previous) => previous.slice(0, genericQuestionCount + 1));
+
+        const segmentQuestionCount = getPhase1QuestionsBySegment(segmentValue).length;
+        if (segmentQuestionCount === 0) {
+          triggerAiQuestionPhase(segmentValue);
+          return;
+        }
+
+        setQuizQuestionIndex(genericQuestionCount + 1);
+        return;
+      }
+
+      if (!selectedSegment) {
+        return;
+      }
+
+      const phase1Index = quizQuestionIndex - genericQuestionCount - 1;
+      const isLastPhase1Question = phase1Index >= phase1Questions.length - 1;
+
+      if (isLastPhase1Question) {
+        triggerAiQuestionPhase(selectedSegment);
+        return;
+      }
+
+      setQuizQuestionIndex((previous) => previous + 1);
+      return;
+    }
+
+    if (phase === "ai-quiz") {
+      const isLastAiQuestion = aiQuestionIndex >= aiGeneratedQuestions.length - 1;
+
+      if (isLastAiQuestion) {
+        triggerVerdict(false);
+        return;
+      }
+
+      setAiQuestionIndex((previous) => previous + 1);
+    }
+  }
+
+  function handleGoBack() {
+    if (!canGoBack) {
+      return;
+    }
+
+    setQuizQuestionIndex((previous) => previous - 1);
   }
 
   function handleCloseSession() {
@@ -255,40 +642,29 @@ export function OrientationIASession() {
     presentVerdict(DEFAULT_VERDICT, true);
   }
 
-  function handleSendMessage(event: FormEvent) {
-    event.preventDefault();
-    const trimmed = chatInput.trim();
-
-    if (!trimmed || archived || phase !== "chat") {
+  function handleGenerateNewSession() {
+    if (archived) {
       return;
     }
 
-    const userMessage = {
-      id: createMessageId("user"),
-      role: "user" as const,
-      content: trimmed,
-      createdAt: new Date().toISOString(),
-    };
-
-    setChatMessages((previous) => [...previous, userMessage]);
-    setChatInput("");
-    setAssistantTyping(true);
-
-    if (replyTimeoutRef.current) {
-      window.clearTimeout(replyTimeoutRef.current);
+    const trimmedPrompt = generationPrompt.trim();
+    if (!trimmedPrompt) {
+      setGenerationError("Precise ce que tu veux modifier avant de generer un nouveau resultat.");
+      return;
     }
 
-    replyTimeoutRef.current = window.setTimeout(() => {
-      const assistantMessage = {
-        id: createMessageId("assistant"),
-        role: "assistant" as const,
-        content: getAssistantFollowUpReply(trimmed),
-        createdAt: new Date().toISOString(),
-      };
+    const generationNumber = resultSessions.length + 1;
+    const nextSession = buildNextMockSession(
+      DEFAULT_VERDICT,
+      generationNumber,
+      trimmedPrompt,
+      selectedSegment ? getSegmentLabel(selectedSegment) : undefined
+    );
 
-      setChatMessages((previous) => [...previous, assistantMessage]);
-      setAssistantTyping(false);
-    }, ASSISTANT_REPLY_DELAY_MS);
+    setResultSessions((previous) => [...previous, nextSession]);
+    setActiveSessionId(nextSession.id);
+    setGenerationPrompt("");
+    setGenerationError("");
   }
 
   async function handleExportPdf() {
@@ -380,6 +756,21 @@ export function OrientationIASession() {
 
         <main ref={exportContainerRef} className="mt-4 flex flex-1 flex-col">
           <AnimatePresence mode="wait">
+            {(phase === "quiz" || phase === "ai-quiz") && currentQuestion ? (
+              <motion.section
+                key={`${phase}-${quizQuestionIndex}-${aiQuestionIndex}-${selectedSegment ?? "none"}`}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                transition={{ duration: 0.3 }}
+                className="mx-auto my-auto w-full max-w-4xl rounded-3xl border border-indigo-200/60 bg-white/70 p-6 shadow-[0_20px_70px_rgba(92,65,188,0.14)] backdrop-blur-xl md:p-8"
+              >
+                <div className="mb-6 flex items-center justify-between gap-3">
+                  <span className="rounded-full bg-indigo-100 px-3 py-1 text-xs font-bold uppercase tracking-[0.11em] text-indigo-700">
+                    {phase === "ai-quiz" ? "Questions IA" : "Session active"}
+                  </span>
+                  <span className="text-sm font-semibold text-indigo-800">{progressLabel}</span>
+                </div>
             {phase === "quiz" ? (
               questionLoading ? (
                 <motion.section
@@ -408,6 +799,25 @@ export function OrientationIASession() {
                     <span className="text-sm font-semibold text-indigo-800">{progressLabel}</span>
                   </div>
 
+                <div className="rounded-2xl border border-indigo-200/60 bg-white/80 px-5 py-6">
+                  <TypewriterText
+                    text={currentQuestion.questionText}
+                    className="text-center text-2xl font-extrabold leading-tight text-indigo-950"
+                  />
+                  <p data-testid="quiz-question-full" className="sr-only">
+                    {currentQuestion.questionText}
+                  </p>
+                  {currentQuestion.subText ? (
+                    <p className="mt-2 text-center text-sm font-medium text-indigo-800/80">
+                      {currentQuestion.subText}
+                    </p>
+                  ) : null}
+                  {currentQuestion.ui_config.helperNote ? (
+                    <p className="mt-2 text-center text-sm text-indigo-700/85">
+                      {currentQuestion.ui_config.helperNote}
+                    </p>
+                  ) : null}
+                </div>
                   <div className="rounded-2xl border border-indigo-200/60 bg-white/80 px-5 py-6">
                     <TypewriterText
                       text={currentQuestion.prompt}
@@ -428,6 +838,23 @@ export function OrientationIASession() {
                       />
                     ))}
                   </div>
+                {currentQuestion.options.length > 0 ? (
+                  <div className="mt-6 grid gap-3 md:grid-cols-2">
+                    {currentQuestion.options.map((option) => {
+                      const isSelected = selectedOptionValues.includes(option.value);
+
+                      return (
+                        <ChoiceCard
+                          key={option.value}
+                          label={option.title}
+                          helper={option.subtitle}
+                          selected={isSelected}
+                          onClick={() => toggleOptionValue(option.value)}
+                        />
+                      );
+                    })}
+                  </div>
+                ) : null}
 
                   <form onSubmit={handleCustomAnswerSubmit} className="mt-5 space-y-3">
                     <label className="text-sm font-semibold text-indigo-900">
@@ -448,6 +875,50 @@ export function OrientationIASession() {
                   </form>
                 </motion.section>
               ) : null
+                {currentQuestion.type === "multi" && currentQuestion.ui_config.maxSelections ? (
+                  <p className="mt-3 text-xs font-semibold uppercase tracking-[0.09em] text-indigo-700/80">
+                    Choisis jusqu'a {currentQuestion.ui_config.maxSelections} options.
+                  </p>
+                ) : null}
+
+                {(currentQuestion.type === "libre" || currentQuestion.ui_config.allowFreeText) ? (
+                  <div className="mt-5 space-y-3">
+                    <label className="text-sm font-semibold text-indigo-900">
+                      {currentQuestion.ui_config.freeTextPrompt || "Tu peux aussi ecrire une reponse libre"}
+                    </label>
+                    <textarea
+                      value={customAnswer}
+                      onChange={(event) => setCustomAnswer(event.target.value)}
+                      placeholder={
+                        currentQuestion.ui_config.freeTextPlaceholder ||
+                        "Ecris ta reponse ici"
+                      }
+                      className="min-h-24 w-full rounded-2xl border border-indigo-200/70 bg-white px-4 py-3 text-sm text-indigo-950 outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-200/40"
+                    />
+                  </div>
+                ) : null}
+
+                <form onSubmit={handleQuestionSubmit} className="mt-6 flex flex-wrap items-center gap-3">
+                  {canGoBack ? (
+                    <button
+                      type="button"
+                      onClick={handleGoBack}
+                      className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-white px-4 py-2.5 text-sm font-bold text-indigo-800 transition hover:bg-indigo-50"
+                    >
+                      <ChevronLeft size={16} />
+                      Question precedente
+                    </button>
+                  ) : null}
+
+                  <button
+                    type="submit"
+                    disabled={!canSubmitCurrentQuestion}
+                    className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {currentQuestion.ui_config.submitButtonText || "Suivant"}
+                  </button>
+                </form>
+              </motion.section>
             ) : null}
 
             {phase === "generating" ? (
@@ -463,62 +934,231 @@ export function OrientationIASession() {
               </motion.section>
             ) : null}
 
-            {phase === "chat" ? (
+            {phase === "chat" && activeSession ? (
               <motion.section
-                key="chat"
-                initial={{ opacity: 0, y: 12 }}
+                key="dashboard"
+                initial={{ opacity: 0, y: 14 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.3 }}
-                className="mx-auto flex h-[calc(100vh-150px)] w-full max-w-6xl flex-col rounded-3xl border border-indigo-200/60 bg-white/60 shadow-[0_20px_70px_rgba(92,65,188,0.14)] backdrop-blur-xl"
+                transition={pageFadeTransition}
+                className="mx-auto w-full max-w-7xl space-y-6"
               >
-                <div className="border-b border-indigo-200/70 px-5 py-4">
-                  <h3 className="text-lg font-bold text-indigo-950">Conseiller Orientation IA</h3>
-                  <p className="text-sm text-indigo-800/80">
-                    Conversation continue: pose tes questions et affine ton plan.
-                  </p>
-                </div>
-
-                <div className="flex-1 space-y-4 overflow-y-auto px-4 py-5 sm:px-6">
-                  {chatMessages.map((message) => (
-                    <ChatMessageBubble key={message.id} message={message} />
-                  ))}
-
-                  {assistantTyping ? (
-                    <motion.div
-                      className="max-w-md rounded-2xl border border-indigo-200/70 bg-white/85 px-4 py-3 text-sm text-indigo-800"
-                      initial={{ opacity: 0.3 }}
-                      animate={{ opacity: [0.3, 1, 0.3] }}
-                      transition={{ duration: 1.1, repeat: Infinity }}
-                    >
-                      L'assistant prepare sa reponse...
-                    </motion.div>
-                  ) : null}
-                  <div ref={chatEndRef} />
-                </div>
-
-                {!archived ? (
-                  <form
-                    onSubmit={handleSendMessage}
-                    className="no-print border-t border-indigo-200/70 bg-white/80 px-4 py-4 sm:px-6"
-                  >
-                    <div className="flex items-center gap-3 rounded-2xl border border-indigo-200/70 bg-white px-3 py-2 shadow-[0_8px_20px_rgba(90,65,180,0.08)]">
-                      <input
-                        value={chatInput}
-                        onChange={(event) => setChatInput(event.target.value)}
-                        placeholder="Pose une question sur ton parcours, les debouches, les formations..."
-                        className="h-10 flex-1 bg-transparent px-2 text-sm text-indigo-950 outline-none"
-                      />
-                      <button
-                        type="submit"
-                        className="inline-flex h-10 items-center gap-2 rounded-xl bg-indigo-600 px-4 text-sm font-bold text-white transition hover:bg-indigo-700"
-                      >
-                        Envoyer
-                        <SendHorizontal size={15} />
-                      </button>
+                <article className="rounded-3xl border border-indigo-100 bg-white/80 p-5 shadow-[0_20px_55px_rgba(67,66,122,0.09)] backdrop-blur md:p-6">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                      <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
+                        Dashboard de restitution Orientation IA
+                      </h1>
+                      <p className="mt-1 text-sm text-slate-600 sm:text-base">
+                        Resultats consolides par generation. Chaque nouveau diagnostic apparait dans un nouvel onglet.
+                      </p>
                     </div>
-                  </form>
-                ) : null}
+
+                    <div className="w-full max-w-lg space-y-2">
+                      <label className="text-xs font-semibold uppercase tracking-[0.12em] text-indigo-700">
+                        Precise ce que tu veux modifier pour une nouvelle generation
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          value={generationPrompt}
+                          onChange={(event) => {
+                            setGenerationPrompt(event.target.value);
+                            if (generationError) {
+                              setGenerationError("");
+                            }
+                          }}
+                          placeholder="Ex: Renforcer les options en alternance et budget public"
+                          className="h-11 flex-1 rounded-xl border border-indigo-200 bg-white px-3 text-sm text-indigo-950 outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-200/40"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleGenerateNewSession}
+                          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 text-sm font-bold text-white transition hover:bg-indigo-700"
+                        >
+                          <Plus size={16} />
+                          Nouvelle generation
+                        </button>
+                      </div>
+                      {generationError ? (
+                        <p className="text-sm font-medium text-rose-700">{generationError}</p>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <SessionTabs
+                    sessions={resultSessions}
+                    activeSessionId={activeSession.id}
+                    onSelect={setActiveSessionId}
+                  />
+                </article>
+
+                <article className="rounded-3xl border border-indigo-100 bg-white p-5 shadow-[0_18px_45px_rgba(58,53,106,0.08)] md:p-6">
+                  <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="space-y-4">
+                      <div className="inline-flex rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-indigo-700">
+                        Verdict orientation
+                      </div>
+
+                      <div>
+                        <p className="text-sm font-semibold uppercase tracking-[0.12em] text-slate-500">
+                          Profil detecte
+                        </p>
+                        <h2 className="mt-1 text-2xl font-bold text-slate-900">
+                          {activeSession.verdict.profile}
+                        </h2>
+                      </div>
+
+                      <p className="max-w-3xl text-sm leading-relaxed text-slate-600 sm:text-base">
+                        {activeSession.verdict.description}
+                      </p>
+
+                      <div className="rounded-2xl border border-indigo-100 bg-indigo-50/60 px-4 py-3">
+                        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-indigo-700">
+                          Cap principal vise
+                        </p>
+                        <p className="mt-1 text-sm font-bold text-indigo-950 sm:text-base">
+                          {activeSession.verdict.mainTarget}
+                        </p>
+                      </div>
+
+                      <p className="text-xs font-medium text-slate-500">
+                        Derniere consigne de regeneration: {activeSession.modificationPrompt || "Aucune"}
+                      </p>
+                    </div>
+
+                    <ConfidenceGauge confidence={activeSession.verdict.confidence} />
+                  </div>
+
+                  <div className="mt-6">
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                      Competences a renforcer
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {activeSession.verdict.skillsToImprove.map((skill) => (
+                        <span
+                          key={skill}
+                          className="rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-900 sm:text-sm"
+                        >
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </article>
+
+                <article className="rounded-3xl border border-indigo-100 bg-white p-5 shadow-[0_18px_45px_rgba(58,53,106,0.08)] md:p-6">
+                  <div className="flex items-end justify-between gap-3">
+                    <div>
+                      <h3 className="text-xl font-bold text-slate-900">Timeline du cursus</h3>
+                      <p className="mt-1 text-sm text-slate-600">
+                        Plan dynamique base sur la generation active ({activeSession.generatedAt}).
+                      </p>
+                    </div>
+                    <span className="rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-800">
+                      {activeSession.timeline.length} etape(s)
+                    </span>
+                  </div>
+
+                  <motion.ol
+                    className="relative mt-6 space-y-5"
+                    variants={timelineContainerVariants}
+                    initial="hidden"
+                    animate="visible"
+                  >
+                    <div className="absolute bottom-4 left-[1.15rem] top-5 w-px bg-indigo-100" aria-hidden />
+
+                    {activeSession.timeline.map((step, index) => (
+                      <motion.li
+                        key={step.id}
+                        variants={timelineStepVariants}
+                        className="relative pl-12"
+                        data-testid="timeline-step"
+                      >
+                        <span className="absolute left-0 top-1 grid h-9 w-9 place-items-center rounded-full border border-indigo-200 bg-indigo-600 text-sm font-bold text-white shadow-[0_8px_18px_rgba(59,66,216,0.35)]">
+                          {index + 1}
+                        </span>
+
+                        <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4">
+                          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-indigo-700">
+                            {step.yearTitle}
+                          </p>
+                          <h4 className="mt-1 text-base font-bold text-slate-900">{step.subtitle}</h4>
+
+                          <ul className="mt-3 space-y-2 text-sm text-slate-700">
+                            {step.details.map((detail) => (
+                              <li key={detail} className="flex items-start gap-2">
+                                <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-indigo-500" />
+                                <span>{detail}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </motion.li>
+                    ))}
+                  </motion.ol>
+                </article>
+
+                <article className="rounded-3xl border border-indigo-100 bg-white p-5 shadow-[0_18px_45px_rgba(58,53,106,0.08)] md:p-6">
+                  <div className="flex items-end justify-between gap-3">
+                    <div>
+                      <h3 className="text-xl font-bold text-slate-900">Ecoles et formations</h3>
+                      <p className="mt-1 text-sm text-slate-600">
+                        Recommandations personnalisees avec nombre de cartes variable selon le profil.
+                      </p>
+                    </div>
+                    <span className="rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-800">
+                      {activeSession.schools.length} recommandation(s)
+                    </span>
+                  </div>
+
+                  <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {activeSession.schools.map((school) => (
+                      <motion.article
+                        key={school.id}
+                        whileHover={{ y: -4, scale: 1.01 }}
+                        transition={{ duration: 0.2 }}
+                        className="rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_10px_28px_rgba(74,66,128,0.07)]"
+                        data-testid="school-card"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <h4 className="text-base font-bold text-slate-900">{school.name}</h4>
+                          <span
+                            className={`rounded-full border px-2.5 py-1 text-xs font-bold ${getSchoolStatusBadgeStyles(
+                              school.status
+                            )}`}
+                          >
+                            {school.status}
+                          </span>
+                        </div>
+
+                        <p className="mt-1 text-sm text-slate-600">{school.location}</p>
+
+                        <div className="mt-4 space-y-2 text-sm text-slate-700">
+                          <p>
+                            <span className="font-semibold text-slate-900">Formation: </span>
+                            {school.program}
+                          </p>
+                          <p>
+                            <span className="font-semibold text-slate-900">Duree: </span>
+                            {school.duration}
+                          </p>
+                          <p>
+                            <span className="font-semibold text-slate-900">Cout: </span>
+                            {school.cost}
+                          </p>
+                        </div>
+
+                        <div
+                          className={`mt-4 rounded-xl border px-3 py-2 text-sm font-medium ${getSchoolConclusionStyles(
+                            school.status
+                          )}`}
+                        >
+                          {school.conclusion}
+                        </div>
+                      </motion.article>
+                    ))}
+                  </div>
+                </article>
               </motion.section>
             ) : null}
           </AnimatePresence>
