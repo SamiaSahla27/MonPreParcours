@@ -333,7 +333,7 @@ export const DEFAULT_VERDICT: AdvisorVerdict = {
   summary:
     "Ton profil montre une combinaison rare: sens utilisateur, capacite d'analyse et envie de concret. La trajectoire la plus pertinente est un parcours Product + IA appliquee, avec une forte dimension projet et alternance.",
   recommendedPath:
-    "Cible prioritaire: Product Manager IA Junior ou Product Analyst avec specialisation orientation/edtech.",
+    "Product Manager IA Junior ou Product Analyst avec specialisation orientation/edtech.",
   confidenceLabel: "Confiance elevee (87%)",
   keySkills: [
     "UX Research",
