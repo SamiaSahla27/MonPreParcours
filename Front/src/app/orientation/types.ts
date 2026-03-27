@@ -1,4 +1,8 @@
+export type QuestionStage = "intro" | "follow-up";
+
 export type SessionPhase = "quiz" | "generating" | "ai-quiz" | "chat";
+
+export type EducationLevel = "college" | "lycee" | "terminal" | "bac_plus_2" | "reconversion";
 
 export type OrientationSegment = "collegien" | "lyceen" | "etudiant" | "adulte";
 
@@ -117,3 +121,28 @@ export interface ChatMessage {
   createdAt: string;
   attachments?: ChatAttachment[];
 }
+
+export interface OrientationQuestionsResponse {
+  stage: QuestionStage;
+  questions: QuizQuestion[];
+}
+
+export interface CreateOrientationSessionInput {
+  educationLevel: EducationLevel;
+  initialAnswers: QuizAnswer[];
+  contextNotes?: string;
+}
+
+export interface OrientationSessionStartResponse extends OrientationQuestionsResponse {
+  sessionId: string;
+}
+
+export interface CompleteOrientationSessionInput {
+  followUpAnswers: QuizAnswer[];
+  studentNotes?: string;
+}
+
+export interface OrientationVerdictResponse {
+  verdict: AdvisorVerdict;
+}
+
