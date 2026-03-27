@@ -6,19 +6,21 @@ import { CardData } from "../data/cards";
 interface ExplorationCardProps {
   card: CardData;
   featured?: boolean;
+  href?: string;
 }
 
-export function ExplorationCard({ card, featured = false }: ExplorationCardProps) {
+export function ExplorationCard({ card, featured = false, href }: ExplorationCardProps) {
   const [hovered, setHovered] = useState(false);
   const navigate = useNavigate();
   const Icon = card.icon;
+  const targetHref = href ?? `/explore/${card.id}`;
 
   return (
     <div
       role="button"
       tabIndex={0}
-      onClick={() => navigate(`/explore/${card.id}`)}
-      onKeyDown={(e) => e.key === "Enter" && navigate(`/explore/${card.id}`)}
+      onClick={() => navigate(targetHref)}
+      onKeyDown={(e) => e.key === "Enter" && navigate(targetHref)}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       className="relative flex flex-col rounded-2xl overflow-hidden cursor-pointer outline-none focus-visible:ring-2"
@@ -134,7 +136,7 @@ export function ExplorationCard({ card, featured = false }: ExplorationCardProps
             border: `1.5px solid ${hovered ? "transparent" : card.accentColor + "30"}`,
             boxShadow: hovered ? `0 4px 16px ${card.accentColor}40` : "none",
           }}
-          onClick={(e) => { e.stopPropagation(); navigate(`/explore/${card.id}`); }}
+          onClick={(e) => { e.stopPropagation(); navigate(targetHref); }}
         >
           {card.ctaLabel}
           <ArrowRight

@@ -13,6 +13,7 @@ import { Register } from "./pages/Register";
 import { Mentors } from "./pages/Mentors";
 import { MentorDetailPage } from "./pages/MentorDetail";
 import { ProfilePage } from "./pages/Profile";
+import { Rencontres } from "./pages/Rencontres";
 
 export const router = createBrowserRouter([
   {
@@ -31,6 +32,7 @@ export const router = createBrowserRouter([
       { path: "login", Component: Login },
       { path: "register", Component: Register },
       { path: "mentorat", Component: Mentorat },
+      { path: "rencontres", Component: Rencontres },
       { path: "profile", Component: ProfilePage },
     ],
   },
