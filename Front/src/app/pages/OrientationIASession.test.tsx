@@ -1,7 +1,10 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
-import { ORIENTATION_QUIZ_QUESTIONS } from "../orientation/mockData";
+import {
+  getMockAiGeneratedQuestionsBySegment,
+  getPhase1QuestionsBySegment,
+} from "../orientation/mockData";
 import { OrientationIASession } from "./OrientationIASession";
 
 function renderSession() {
@@ -12,30 +15,147 @@ function renderSession() {
   );
 }
 
-describe("OrientationIASession", () => {
-  it("renders the initial immersive quiz state", () => {
-    renderSession();
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
-    expect(screen.getByText("Session active")).toBeInTheDocument();
-    expect(screen.getByTestId("quiz-question-full")).toHaveTextContent(
-      ORIENTATION_QUIZ_QUESTIONS[0].prompt
+function clickChoiceByLabel(label: string) {
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: new RegExp(escapeRegExp(label), "i"),
+    })
+  );
+}
+
+function getSubmitButton(label: string) {
+  return screen.getByRole("button", {
+    name: new RegExp(escapeRegExp(label), "i"),
+  });
+}
+
+async function completeSegmentAndPhase1(segment: "lyceen") {
+  const phase1Questions = getPhase1QuestionsBySegment(segment);
+
+  clickChoiceByLabel("Lyceen");
+  fireEvent.click(getSubmitButton("Demarrer le quiz"));
+
+  await waitFor(() => {
+    expect(screen.getByTestId("quiz-question-full").textContent).toContain(
+      phase1Questions[0].questionText
     );
-    expect(screen.getByText("Cloturer la session")).toBeInTheDocument();
   });
 
-  it("moves from one quiz question to the next after selecting a choice", async () => {
+  for (const question of phase1Questions) {
+    await waitFor(() => {
+      expect(screen.getByTestId("quiz-question-full").textContent).toContain(
+        question.questionText
+      );
+    });
+
+    const firstOption = question.options[0];
+
+    if (firstOption) {
+      clickChoiceByLabel(firstOption.title);
+    }
+
+    fireEvent.click(getSubmitButton(question.ui_config.submitButtonText));
+  }
+}
+
+describe("OrientationIASession", () => {
+  it("renders the segment personality entry question", () => {
     renderSession();
 
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: /Concevoir des produits tech utiles/i,
-      })
+    expect(screen.getByText("Session active")).toBeTruthy();
+    expect(screen.getByTestId("quiz-question-full").textContent).toContain(
+      "Quel est ton type de personnalite ?"
     );
+    expect(screen.getByText("Cloturer la session")).toBeTruthy();
+  });
+
+  it("moves to phase1 questions after selecting a personality segment", async () => {
+    renderSession();
+
+    const phase1Questions = getPhase1QuestionsBySegment("lyceen");
+
+    clickChoiceByLabel("Lyceen");
+    fireEvent.click(getSubmitButton("Demarrer le quiz"));
 
     await waitFor(() => {
-      expect(screen.getByTestId("quiz-question-full")).toHaveTextContent(
-        ORIENTATION_QUIZ_QUESTIONS[1].prompt
+      expect(screen.getByTestId("quiz-question-full").textContent).toContain(
+        phase1Questions[0].questionText
       );
+    });
+  });
+
+  it("allows going back during phase1 questions", async () => {
+    renderSession();
+
+    const phase1Questions = getPhase1QuestionsBySegment("lyceen");
+
+    clickChoiceByLabel("Lyceen");
+    fireEvent.click(getSubmitButton("Demarrer le quiz"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("quiz-question-full").textContent).toContain(
+        phase1Questions[0].questionText
+      );
+    });
+
+    clickChoiceByLabel(phase1Questions[0].options[0].title);
+    fireEvent.click(getSubmitButton(phase1Questions[0].ui_config.submitButtonText));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("quiz-question-full").textContent).toContain(
+        phase1Questions[1].questionText
+      );
+    });
+
+    fireEvent.click(getSubmitButton("Question precedente"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("quiz-question-full").textContent).toContain(
+        phase1Questions[0].questionText
+      );
+    });
+  });
+
+  it("shows the 3 IA questions before chat and disables back navigation there", async () => {
+    renderSession();
+
+    await completeSegmentAndPhase1("lyceen");
+
+    const aiQuestions = getMockAiGeneratedQuestionsBySegment("lyceen", 3);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("quiz-question-full").textContent).toContain(
+        aiQuestions[0].questionText
+      );
+    });
+
+    expect(
+      screen.queryByRole("button", { name: /Question precedente/i })
+    ).toBeNull();
+    expect(screen.queryByText("Conseiller Orientation IA")).toBeNull();
+
+    for (const question of aiQuestions) {
+      await waitFor(() => {
+        expect(screen.getByTestId("quiz-question-full").textContent).toContain(
+          question.questionText
+        );
+      });
+
+      const firstOption = question.options[0];
+
+      if (firstOption) {
+        clickChoiceByLabel(firstOption.title);
+      }
+
+      fireEvent.click(getSubmitButton(question.ui_config.submitButtonText));
+    }
+
+    await waitFor(() => {
+      expect(screen.getByText("Conseiller Orientation IA")).toBeTruthy();
     });
   });
 
@@ -47,12 +167,12 @@ describe("OrientationIASession", () => {
     await waitFor(() => {
       expect(
         screen.getByText("Cette session est terminee et archivee.")
-      ).toBeInTheDocument();
+      ).toBeTruthy();
     });
 
     expect(
       screen.getByRole("button", { name: /Exporter en PDF/i })
-    ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Imprimer/i })).toBeInTheDocument();
+    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Imprimer/i })).toBeTruthy();
   });
 });

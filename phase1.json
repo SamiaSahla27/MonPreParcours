@@ -1,0 +1,306 @@
+{
+  "collegien": [
+    {
+      "id": "P1-C",
+      "db_key": "matiere_preferee",
+      "type": "single",
+      "segment": "collegien",
+      "questionText": "Quelle matière tu pourrais faire pendant des heures sans t'ennuyer ?",
+      "subText": "",
+      "options": [
+        { "title": "Maths / Sciences", "value": "sciences" },
+        { "title": "Arts / Musique / Théâtre", "value": "arts" },
+        { "title": "Sport / EPS", "value": "sport" },
+        { "title": "Langues / Littérature / Français", "value": "lettres" },
+        { "title": "Histoire / Géo / Éducation civique", "value": "humanites" },
+        { "title": "Techno / Informatique", "value": "techno" }
+      ],
+      "ui_config": { "allowFreeText": false, "submitButtonText": "Suivant", "helperNote": "→ Révèle l'appétence naturelle avant toute pression d'orientation." }
+    },
+    {
+      "id": "P2-C",
+      "db_key": "activites_extra",
+      "type": "multi",
+      "segment": "collegien",
+      "questionText": "Qu'est-ce que tu fais après l'école ou le week-end ? (max 2)",
+      "subText": "",
+      "options": [
+        { "title": "Sport en club", "value": "sport_club" },
+        { "title": "Créer (dessin, vidéo, musique...)", "value": "creation" },
+        { "title": "Jeux vidéo / ordinateur", "value": "jeux_numerique" },
+        { "title": "Aider des gens (famille, bénévolat...)", "value": "aide" },
+        { "title": "Lire / regarder des docs / apprendre", "value": "culture" },
+        { "title": "Bricoler, construire, réparer", "value": "bricolage" }
+      ],
+      "ui_config": { "allowFreeText": false, "maxSelections": 2, "submitButtonText": "Suivant", "helperNote": "→ Les activités extra révèlent souvent la vraie vocation. Un bricoleur peut être futur ingénieur ou artisan." }
+    },
+    {
+      "id": "P3-C",
+      "db_key": "vision_metier",
+      "type": "single",
+      "segment": "collegien",
+      "questionText": "Est-ce que tu as déjà une idée du métier que tu aimerais faire ?",
+      "subText": "",
+      "options": [
+        { "title": "Oui", "value": "oui" },
+        { "title": "Non", "value": "non" }
+      ],
+      "ui_config": { "allowFreeText": true, "freeTextPrompt": "Si oui, lequel ?", "freeTextPlaceholder": "Ex: Game designer", "submitButtonText": "Suivant", "helperNote": "→ Si oui : champ texte libre. Calibre si on explore ou si on valide une idée déjà présente. Clé pour le prompt IA n°1." }
+    },
+    {
+      "id": "P4-C",
+      "db_key": "dimension_sociale",
+      "type": "single",
+      "segment": "collegien",
+      "questionText": "Tu préfères travailler seul ou avec d'autres ?",
+      "subText": "",
+      "options": [
+        { "title": "Plutôt seul, je me concentre mieux", "value": "solo" },
+        { "title": "En équipe, j'aime collaborer", "value": "equipe" },
+        { "title": "Un peu des deux", "value": "mixte" }
+      ],
+      "ui_config": { "allowFreeText": false, "submitButtonText": "Suivant", "helperNote": "→ Oriente vers métiers solo vs collectif." }
+    },
+    {
+      "id": "P5-C",
+      "db_key": "voie_post_3e",
+      "type": "single",
+      "segment": "collegien",
+      "questionText": "Quel type de lycée envisages-tu après la 3e ?",
+      "subText": "",
+      "options": [
+        { "title": "Lycée général", "value": "general" },
+        { "title": "Lycée technologique", "value": "techno" },
+        { "title": "Lycée professionnel", "value": "pro" },
+        { "title": "Je ne sais pas encore", "value": "indecis" }
+      ],
+      "ui_config": { "allowFreeText": false, "submitButtonText": "Terminer", "helperNote": "→ Premier filtre de parcours post-3e, détermine les voies accessibles." }
+    }
+  ],
+  "lyceen": [
+    {
+      "id": "P1-L",
+      "db_key": "type_bac",
+      "type": "single",
+      "segment": "lyceen",
+      "questionText": "Tu es en bac général, technologique ou professionnel ?",
+      "subText": "",
+      "options": [
+        { "title": "Bac général", "value": "general" },
+        { "title": "Bac technologique", "value": "techno" },
+        { "title": "Bac professionnel", "value": "pro" }
+      ],
+      "ui_config": { "allowFreeText": false, "submitButtonText": "Suivant", "helperNote": "→ Détermine les formations accessibles : prépa, BTS, BUT, licence, école..." }
+    },
+    {
+      "id": "P2-L",
+      "db_key": "vision_post_bac",
+      "type": "single",
+      "segment": "lyceen",
+      "questionText": "Tu as déjà une idée de ce que tu veux faire après le bac ?",
+      "subText": "",
+      "options": [
+        { "title": "Oui", "value": "oui" },
+        { "title": "Non", "value": "non" }
+      ],
+      "ui_config": { "allowFreeText": true, "freeTextPrompt": "Si oui, dis m'en plus", "freeTextPlaceholder": "Ex: École de commerce", "submitButtonText": "Suivant", "helperNote": "→ Si oui : texte libre. Permet à l'IA d'affiner ou de challenger l'idée déjà présente plutôt que de repartir de zéro." }
+    },
+    {
+      "id": "P3-L",
+      "db_key": "alternance_ok",
+      "type": "single",
+      "segment": "lyceen",
+      "questionText": "L'alternance (école + entreprise en même temps), c'est une option pour toi ?",
+      "subText": "",
+      "options": [
+        { "title": "Oui, c'est même ce que je préfère", "value": "alternance_oui" },
+        { "title": "Oui si ça correspond à mon projet", "value": "alternance_possible" },
+        { "title": "Non, je préfère rester à l'école", "value": "alternance_non" }
+      ],
+      "ui_config": { "allowFreeText": false, "submitButtonText": "Suivant", "helperNote": "→ Ouvre ou ferme des formations avec composante alternance." }
+    },
+    {
+      "id": "P4-L",
+      "db_key": "matieres_utiles",
+      "type": "multi",
+      "segment": "lyceen",
+      "questionText": "Quelle matière te semble la plus utile pour ton futur ? (max 2)",
+      "subText": "",
+      "options": [
+        { "title": "Maths / Sciences", "value": "maths_sciences" },
+        { "title": "Sciences humaines / Philo / SES", "value": "sh" },
+        { "title": "Langues / Communication", "value": "langues" },
+        { "title": "Biologie / Santé", "value": "bio_sante" },
+        { "title": "Arts / Expression", "value": "arts" },
+        { "title": "Techno / Numérique", "value": "techno" }
+      ],
+      "ui_config": { "allowFreeText": false, "maxSelections": 2, "submitButtonText": "Suivant", "helperNote": "→ Filtre les prérequis des formations sans supposer un profil scientifique par défaut." }
+    },
+    {
+      "id": "P5-L",
+      "db_key": "international",
+      "type": "single",
+      "segment": "lyceen",
+      "questionText": "Tu envisages des études à l'étranger ou un séjour international ?",
+      "subText": "",
+      "options": [
+        { "title": "Oui, c'est important pour moi", "value": "international_oui" },
+        { "title": "Pourquoi pas si c'est proposé", "value": "international_possible" },
+        { "title": "Non, je reste en France", "value": "international_non" }
+      ],
+      "ui_config": { "allowFreeText": false, "submitButtonText": "Terminer", "helperNote": "→ Filtre les écoles avec programmes internationaux et échanges Erasmus." }
+    }
+  ],
+  "etudiant": [
+    {
+      "id": "P1-E",
+      "db_key": "niveau_actuel",
+      "type": "single",
+      "segment": "etudiant",
+      "questionText": "Quel est ton niveau actuel et dans quel domaine ?",
+      "subText": "niveau_actuel + domaine_actuel",
+      "options": [
+        { "title": "Bac +1", "value": "bac1" },
+        { "title": "Bac +2", "value": "bac2" },
+        { "title": "Bac +3", "value": "bac3" },
+        { "title": "Bac +4 ou plus", "value": "bac4plus" }
+      ],
+      "ui_config": { "allowFreeText": true, "freeTextPrompt": "Dans quel domaine ?", "freeTextPlaceholder": "Ex: Licence de droit", "submitButtonText": "Suivant", "helperNote": "→ + champ texte 'dans quel domaine ?'. Identifie les passerelles et équivalences possibles." }
+    },
+    {
+      "id": "P2-E",
+      "db_key": "raison_reorientation",
+      "type": "multi",
+      "segment": "etudiant",
+      "questionText": "Pourquoi veux-tu changer de parcours ? (max 2)",
+      "subText": "",
+      "options": [
+        { "title": "Le domaine ne m'intéresse plus", "value": "desinteret" },
+        { "title": "Les débouchés ne me conviennent pas", "value": "debouches" },
+        { "title": "J'ai découvert une nouvelle passion", "value": "nouvelle_passion" },
+        { "title": "Des difficultés dans ma formation actuelle", "value": "difficulte" },
+        { "title": "Je veux aller vers quelque chose qui a plus de sens pour moi", "value": "sens" }
+      ],
+      "ui_config": { "allowFreeText": false, "maxSelections": 2, "submitButtonText": "Suivant", "helperNote": "→ Distingue réorientation subie vs choisie. Impact sur le ton du conseiller IA." }
+    },
+    {
+      "id": "P3-E",
+      "db_key": "experiences_acquises",
+      "type": "multi",
+      "segment": "etudiant",
+      "questionText": "Qu'est-ce que tu as déjà fait en dehors des cours ? (max 2)",
+      "subText": "",
+      "options": [
+        { "title": "Stage ou job étudiant", "value": "stage_job" },
+        { "title": "Projet perso ou associatif", "value": "projet_perso" },
+        { "title": "Voyage ou expérience à l'étranger", "value": "international" },
+        { "title": "Bénévolat ou engagement", "value": "benevolat" },
+        { "title": "Pas encore d'expérience significative", "value": "aucune" }
+      ],
+      "ui_config": { "allowFreeText": false, "maxSelections": 2, "submitButtonText": "Suivant", "helperNote": "→ Valorise le passé pour construire un pont vers le nouveau parcours dans le prompt IA." }
+    },
+    {
+      "id": "P4-E",
+      "db_key": "financement",
+      "type": "single",
+      "segment": "etudiant",
+      "questionText": "Comment envisages-tu de financer ta formation ?",
+      "subText": "",
+      "options": [
+        { "title": "Famille / économies personnelles", "value": "perso" },
+        { "title": "Bourse sur critères sociaux", "value": "bourse" },
+        { "title": "Alternance (salaire étudiant)", "value": "alternance" },
+        { "title": "Prêt étudiant", "value": "pret" }
+      ],
+      "ui_config": { "allowFreeText": false, "submitButtonText": "Suivant", "helperNote": "→ Filtre les formations selon financement réellement disponible." }
+    },
+    {
+      "id": "P5-E",
+      "db_key": "horizon_emploi",
+      "type": "single",
+      "segment": "etudiant",
+      "questionText": "Dans combien de temps veux-tu être en emploi dans ton nouveau domaine ?",
+      "subText": "",
+      "options": [
+        { "title": "Moins d'un an", "subtitle": "bootcamp, certif", "value": "urgent" },
+        { "title": "1 à 2 ans", "subtitle": "Mastère, MS", "value": "court" },
+        { "title": "2 à 3 ans", "subtitle": "Master 2", "value": "moyen" },
+        { "title": "Je prends le temps qu'il faut", "value": "flexible" }
+      ],
+      "ui_config": { "allowFreeText": false, "submitButtonText": "Terminer", "helperNote": "→ Calibre l'urgence du conseil et oriente vers parcours courts vs longs." }
+    }
+  ],
+  "adulte": [
+    {
+      "id": "P1-A",
+      "db_key": "metier_actuel",
+      "type": "libre",
+      "segment": "adulte",
+      "questionText": "Quel est ton métier actuel ou ta dernière expérience professionnelle ?",
+      "subText": "texte libre",
+      "options": [],
+      "ui_config": { "allowFreeText": true, "freeTextPrompt": "", "freeTextPlaceholder": "Ex: Vendeur en boutique depuis 5 ans", "submitButtonText": "Suivant", "helperNote": "→ Clé pour détecter les compétences transférables. Champ le plus important pour le prompt IA n°1." }
+    },
+    {
+      "id": "P2-A",
+      "db_key": "motivation_reconversion",
+      "type": "multi",
+      "segment": "adulte",
+      "questionText": "Qu'est-ce qui te pousse à changer ? (max 2)",
+      "subText": "",
+      "options": [
+        { "title": "Manque de sens au quotidien", "value": "sens" },
+        { "title": "Fatigue ou burn-out", "value": "burnout" },
+        { "title": "Envie de gagner plus", "value": "salaire" },
+        { "title": "Une passion que je veux exercer", "value": "passion" },
+        { "title": "Mon secteur est en difficulté", "value": "contrainte" },
+        { "title": "Envie d'être à mon compte", "value": "independance" }
+      ],
+      "ui_config": { "allowFreeText": false, "maxSelections": 2, "submitButtonText": "Suivant", "helperNote": "→ Comprend la motivation profonde pour aligner le ton et les recommandations." }
+    },
+    {
+      "id": "P3-A",
+      "db_key": "disponibilite_semaine",
+      "type": "single",
+      "segment": "adulte",
+      "questionText": "Combien de temps par semaine peux-tu consacrer à te former ?",
+      "subText": "",
+      "options": [
+        { "title": "Moins de 5h par semaine", "subtitle": "MOOC, certif", "value": "micro" },
+        { "title": "5 à 15h par semaine", "subtitle": "distanciel", "value": "partiel" },
+        { "title": "Je peux me libérer totalement", "subtitle": "bootcamp, formation intensive", "value": "fulltime" },
+        { "title": "Variable selon les périodes", "value": "flexible" }
+      ],
+      "ui_config": { "allowFreeText": false, "submitButtonText": "Suivant", "helperNote": "→ Filtre entre formations full-time, temps partiel, 100% distanciel ou hybride." }
+    },
+    {
+      "id": "P4-A",
+      "db_key": "connaissance_droits",
+      "type": "single",
+      "segment": "adulte",
+      "questionText": "Tu connais tes droits à la formation (CPF, aides reconversion) ?",
+      "subText": "",
+      "options": [
+        { "title": "Oui, je connais mon solde CPF", "value": "cpf_oui" },
+        { "title": "J'en ai entendu parler, pas vraiment vérifié", "value": "cpf_vague" },
+        { "title": "Non, je ne connais pas ces aides", "value": "cpf_non" }
+      ],
+      "ui_config": { "allowFreeText": false, "submitButtonText": "Suivant", "helperNote": "→ Si non : ajouter un module d'info CPF dans le verdict. Oriente vers formations éligibles." }
+    },
+    {
+      "id": "P5-A",
+      "db_key": "urgence_projet",
+      "type": "single",
+      "segment": "adulte",
+      "questionText": "Quelle est l'urgence de ta reconversion ?",
+      "subText": "",
+      "options": [
+        { "title": "J'explore, rien de décidé", "value": "exploration" },
+        { "title": "J'ai 6 à 12 mois devant moi", "value": "moyen_terme" },
+        { "title": "C'est urgent, je dois agir maintenant", "value": "urgent" },
+        { "title": "Je suis déjà en transition (licencié, démissionnaire)", "value": "en_cours" }
+      ],
+      "ui_config": { "allowFreeText": false, "submitButtonText": "Terminer", "helperNote": "→ Calibre l'horizon temporel et le niveau de détail du plan d'action dans le verdict final." }
+    }
+  ]
+}

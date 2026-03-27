@@ -12,6 +12,7 @@ export function ExplorationCard({ card, featured = false }: ExplorationCardProps
   const [hovered, setHovered] = useState(false);
   const navigate = useNavigate();
   const Icon = card.icon;
+  const isPrimaryOrientation = featured && card.id === "decouvrir";
 
   return (
     <div
@@ -23,18 +24,43 @@ export function ExplorationCard({ card, featured = false }: ExplorationCardProps
       onMouseLeave={() => setHovered(false)}
       className="relative flex flex-col rounded-2xl overflow-hidden cursor-pointer outline-none focus-visible:ring-2"
       style={{
-        background: "#FFFFFF",
-        border: `1.5px solid ${hovered ? card.accentColor + "40" : "rgba(0,0,0,0.06)"}`,
+        background: isPrimaryOrientation
+          ? "linear-gradient(165deg, #ffffff 0%, #f7f1ff 100%)"
+          : "#FFFFFF",
+        border: `1.5px solid ${
+          isPrimaryOrientation
+            ? hovered
+              ? card.accentColor + "80"
+              : card.accentColor + "55"
+            : hovered
+              ? card.accentColor + "40"
+              : "rgba(0,0,0,0.06)"
+        }`,
         boxShadow: hovered
-          ? `0 20px 60px ${card.accentColor}22, 0 4px 16px rgba(0,0,0,0.06)`
-          : "0 2px 12px rgba(0,0,0,0.04)",
+          ? `0 24px 64px ${card.accentColor}30, 0 6px 18px rgba(0,0,0,0.08)`
+          : isPrimaryOrientation
+            ? `0 12px 34px ${card.accentColor}1f, inset 0 0 0 1px ${card.accentColor}22`
+            : "0 2px 12px rgba(0,0,0,0.04)",
         transform: hovered ? "translateY(-4px) scale(1.005)" : "translateY(0) scale(1)",
         transition: "all 0.28s cubic-bezier(0.34, 1.56, 0.64, 1)",
         height: "100%",
-        minHeight: featured ? 260 : 220,
+        minHeight: featured ? 280 : 220,
         fontFamily: "'Plus Jakarta Sans', sans-serif",
       }}
     >
+      {isPrimaryOrientation ? (
+        <>
+          <div
+            className="pointer-events-none absolute -left-20 -top-24 h-56 w-56 rounded-full blur-3xl"
+            style={{ background: `${card.accentColor}44` }}
+          />
+          <div
+            className="pointer-events-none absolute -right-16 bottom-10 h-44 w-44 rounded-full blur-3xl"
+            style={{ background: "#a855f744" }}
+          />
+        </>
+      ) : null}
+
       {/* Badge */}
       {card.badge && (
         <div
@@ -45,7 +71,9 @@ export function ExplorationCard({ card, featured = false }: ExplorationCardProps
             fontWeight: 700,
             fontSize: "0.6875rem",
             letterSpacing: "0.02em",
-            boxShadow: `0 2px 8px ${card.accentColor}55`,
+            boxShadow: isPrimaryOrientation
+              ? `0 6px 16px ${card.accentColor}7a`
+              : `0 2px 8px ${card.accentColor}55`,
           }}
         >
           {card.badge === "Recommandé" ? "⭐ " : "✨ "}
@@ -58,8 +86,8 @@ export function ExplorationCard({ card, featured = false }: ExplorationCardProps
         className="flex-shrink-0 flex items-end justify-between px-5 pt-5 pb-4"
         style={{
           background: hovered
-            ? `linear-gradient(135deg, ${card.accentColor}18 0%, ${card.accentColor}08 100%)`
-            : `linear-gradient(135deg, ${card.accentColor}0D 0%, ${card.accentColor}05 100%)`,
+            ? `linear-gradient(135deg, ${card.accentColor}${isPrimaryOrientation ? "32" : "18"} 0%, ${card.accentColor}14 100%)`
+            : `linear-gradient(135deg, ${card.accentColor}${isPrimaryOrientation ? "22" : "0D"} 0%, ${card.accentColor}09 100%)`,
           borderBottom: `1px solid ${card.accentColor}15`,
           transition: "background 0.28s ease",
         }}
@@ -77,8 +105,14 @@ export function ExplorationCard({ card, featured = false }: ExplorationCardProps
             className="w-11 h-11 rounded-xl flex items-center justify-center"
             style={{
               background: card.gradient,
-              boxShadow: `0 4px 16px ${card.accentColor}40`,
-              transform: hovered ? "scale(1.08) rotate(-2deg)" : "scale(1) rotate(0deg)",
+              boxShadow: isPrimaryOrientation
+                ? `0 8px 24px ${card.accentColor}66`
+                : `0 4px 16px ${card.accentColor}40`,
+              transform: hovered
+                ? "scale(1.08) rotate(-2deg)"
+                : isPrimaryOrientation
+                  ? "scale(1.04)"
+                  : "scale(1) rotate(0deg)",
               transition: "transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1)",
             }}
           >
@@ -119,7 +153,7 @@ export function ExplorationCard({ card, featured = false }: ExplorationCardProps
         {/* Description */}
         <p
           className="text-xs"
-          style={{ color: "#9CA3AF", lineHeight: 1.6 }}
+          style={{ color: isPrimaryOrientation ? "#6b7280" : "#9CA3AF", lineHeight: 1.6 }}
         >
           {card.description}
         </p>
@@ -128,11 +162,11 @@ export function ExplorationCard({ card, featured = false }: ExplorationCardProps
         <button
           className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm transition-all duration-200"
           style={{
-            background: hovered ? card.gradient : card.lightColor,
-            color: hovered ? "white" : card.accentColor,
+              background: isPrimaryOrientation || hovered ? card.gradient : card.lightColor,
+              color: isPrimaryOrientation || hovered ? "white" : card.accentColor,
             fontWeight: 700,
-            border: `1.5px solid ${hovered ? "transparent" : card.accentColor + "30"}`,
-            boxShadow: hovered ? `0 4px 16px ${card.accentColor}40` : "none",
+              border: `1.5px solid ${(isPrimaryOrientation || hovered) ? "transparent" : card.accentColor + "30"}`,
+              boxShadow: isPrimaryOrientation || hovered ? `0 6px 18px ${card.accentColor}44` : "none",
           }}
           onClick={(e) => { e.stopPropagation(); navigate(`/explore/${card.id}`); }}
         >
