@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Search, Bell, ChevronDown, X } from "lucide-react";
+import { useAuth } from "../services/authStore";
 
 const SEARCH_SUGGESTIONS = [
   { label: "Data Scientist", type: "Métier" },
@@ -11,6 +12,7 @@ const SEARCH_SUGGESTIONS = [
 ];
 
 export function Navbar() {
+  const auth = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
   const [activeLink, setActiveLink] = useState("Explorer");
@@ -169,6 +171,62 @@ export function Navbar() {
 
           {/* Right side */}
           <div className="flex items-center gap-3 flex-shrink-0">
+            {auth.status !== "authenticated" ? (
+              <>
+                <button
+                  onClick={() => navigate("/login")}
+                  className="px-3 py-1.5 rounded-lg text-sm transition-all duration-200 hover:bg-violet-50"
+                  style={{
+                    fontFamily: "'Plus Jakarta Sans', sans-serif",
+                    fontWeight: 600,
+                    color: "#7C3AED",
+                  }}
+                >
+                  Connexion
+                </button>
+                <button
+                  onClick={() => navigate("/register")}
+                  className="px-3 py-1.5 rounded-lg text-sm transition-all duration-200"
+                  style={{
+                    fontFamily: "'Plus Jakarta Sans', sans-serif",
+                    fontWeight: 600,
+                    background: "#EDE9FE",
+                    color: "#7C3AED",
+                  }}
+                >
+                  Inscription
+                </button>
+              </>
+            ) : (
+              <>
+                <div
+                  className="hidden sm:flex items-center text-xs px-2 py-1 rounded-full"
+                  style={{
+                    background: "#F5F3FF",
+                    color: "#6B7280",
+                    fontFamily: "'Plus Jakarta Sans', sans-serif",
+                    fontWeight: 600,
+                  }}
+                >
+                  {auth.user?.role} • {auth.user?.email}
+                </div>
+                <button
+                  onClick={() => {
+                    auth.logout();
+                    navigate("/");
+                  }}
+                  className="px-3 py-1.5 rounded-lg text-sm transition-all duration-200 hover:bg-violet-50"
+                  style={{
+                    fontFamily: "'Plus Jakarta Sans', sans-serif",
+                    fontWeight: 600,
+                    color: "#7C3AED",
+                  }}
+                >
+                  Déconnexion
+                </button>
+              </>
+            )}
+
             {/* Progress pill - hidden on mobile */}
             <div
               className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full text-xs"
