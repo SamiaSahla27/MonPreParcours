@@ -18,8 +18,7 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "groq:cli": "ts-node src/grok-orientation-cli.ts"
-    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "grok:cli": "ts-node src/grok-orientation-cli.ts",
     "groq:cli": "ts-node src/groq-orientation-cli.ts"
   },
   "dependencies": {

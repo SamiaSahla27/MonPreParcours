@@ -474,7 +474,7 @@ const TRACK_LIBRARY: Record<TrackId, TrackDefinition> = {
 export function buildHeuristicVerdict(
   payload: OrientationGroqPayload,
 ): AdvisorVerdict {
-  const answers = [...payload.answers, ...payload.followUpAnswers];
+  const answers = [...payload.phase1Answers, ...payload.phase2Answers];
   const motivationAnswer =
     findAnswer(answers, 'motivation-core') ?? findAnswer(answers, 'motivation');
   const trackId = motivationAnswer?.selectedOptionId

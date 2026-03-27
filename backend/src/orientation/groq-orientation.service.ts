@@ -8,6 +8,7 @@ import {
   SchoolRecommendation,
   TimelineStep,
 } from './orientation.types';
+import { getProfileDefinition } from './profiles';
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -85,7 +86,9 @@ export class GroqOrientationService {
           },
           {
             role: 'user',
-            content: `Donnees etudiant: ${JSON.stringify(payload)}`,
+            content: `Donnees etudiant: ${JSON.stringify(
+              this.buildPromptPayload(payload),
+            )}`,
           },
         ],
       });
@@ -240,6 +243,18 @@ export class GroqOrientationService {
         typeof school.commentaire_ia === 'string'
           ? school.commentaire_ia
           : (fallback?.whyItFits ?? 'Alignement strategique a confirmer'),
+    };
+  }
+
+  private buildPromptPayload(payload: OrientationGroqPayload) {
+    const profile = getProfileDefinition(payload.profileId);
+    return {
+      educationLevel: payload.educationLevel,
+      profile,
+      profileId: payload.profileId,
+      phase1Answers: payload.phase1Answers,
+      phase2Answers: payload.phase2Answers,
+      studentNotes: payload.studentNotes ?? null,
     };
   }
 }
