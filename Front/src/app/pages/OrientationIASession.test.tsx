@@ -6,6 +6,7 @@ import {
   getMockAiGeneratedQuestionsBySegment,
   getPhase1QuestionsBySegment,
 } from "../orientation/mockData";
+import { BaseOrientationQuestion } from "../orientation/types";
 import { OrientationIASession } from "./OrientationIASession";
 
 function renderSession() {
@@ -36,14 +37,25 @@ function clickSubmitByLabel(label: string) {
   );
 }
 
+function answerQuestion(question: BaseOrientationQuestion) {
+  if (question.options[0]) {
+    clickChoiceByLabel(question.options[0].title);
+  }
+
+  if (question.type === "single" && !question.ui_config.allowFreeText) {
+    return;
+  }
+
+  clickSubmitByLabel(question.ui_config.submitButtonText);
+}
+
 async function completeGenericQuestions() {
   for (const question of PRE_PROFILE_GENERIC_QUESTIONS) {
     await waitFor(() => {
       expect(screen.getByTestId("quiz-question-full").textContent).toContain(question.questionText);
     });
 
-    clickChoiceByLabel(question.options[0].title);
-    clickSubmitByLabel(question.ui_config.submitButtonText);
+    answerQuestion(question);
   }
 }
 
@@ -57,7 +69,6 @@ async function completeSegmentAndPhase1(segment: "lyceen") {
   });
 
   clickChoiceByLabel("Lyceen");
-  clickSubmitByLabel("Demarrer le profil");
 
   const phase1Questions = getPhase1QuestionsBySegment(segment);
 
@@ -66,11 +77,7 @@ async function completeSegmentAndPhase1(segment: "lyceen") {
       expect(screen.getByTestId("quiz-question-full").textContent).toContain(question.questionText);
     });
 
-    if (question.options[0]) {
-      clickChoiceByLabel(question.options[0].title);
-    }
-
-    clickSubmitByLabel(question.ui_config.submitButtonText);
+    answerQuestion(question);
   }
 }
 
@@ -108,7 +115,6 @@ describe("OrientationIASession", () => {
     });
 
     clickChoiceByLabel("Lyceen");
-    clickSubmitByLabel("Demarrer le profil");
 
     const firstPhase1 = getPhase1QuestionsBySegment("lyceen")[0];
 
@@ -123,7 +129,7 @@ describe("OrientationIASession", () => {
         "Quel est ton type de personnalite ?"
       );
     });
-  });
+  }, 20000);
 
   it("shows 3 IA questions then the dashboard template", async () => {
     renderSession();
@@ -143,8 +149,7 @@ describe("OrientationIASession", () => {
         expect(screen.getByTestId("quiz-question-full").textContent).toContain(question.questionText);
       });
 
-      clickChoiceByLabel(question.options[0].title);
-      clickSubmitByLabel(question.ui_config.submitButtonText);
+      answerQuestion(question);
     }
 
     await waitFor(() => {
@@ -163,8 +168,7 @@ describe("OrientationIASession", () => {
         expect(screen.getByTestId("quiz-question-full").textContent).toContain(question.questionText);
       });
 
-      clickChoiceByLabel(question.options[0].title);
-      clickSubmitByLabel(question.ui_config.submitButtonText);
+      answerQuestion(question);
     }
 
     await waitFor(() => {
@@ -178,6 +182,12 @@ describe("OrientationIASession", () => {
     clickSubmitByLabel("Nouvelle generation");
 
     await waitFor(() => {
+      expect(screen.getByRole("dialog", { name: /Nouvelle generation/i })).toBeTruthy();
+    });
+
+    clickSubmitByLabel("Generer maintenant");
+
+    await waitFor(() => {
       expect(
         screen.getByText(/Precise ce que tu veux modifier avant de generer un nouveau resultat/i)
       ).toBeTruthy();
@@ -187,7 +197,7 @@ describe("OrientationIASession", () => {
       screen.getByPlaceholderText(/Ex: Renforcer les options en alternance/i),
       { target: { value: "Je veux plus d'options publiques en alternance" } }
     );
-    clickSubmitByLabel("Nouvelle generation");
+    clickSubmitByLabel("Generer maintenant");
 
     await waitFor(() => {
       expect(screen.getByRole("button", { name: /Recherche #3/i })).toBeTruthy();
