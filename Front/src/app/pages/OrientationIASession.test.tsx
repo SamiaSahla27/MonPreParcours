@@ -1,7 +1,10 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { OrientationQuestionsResponse } from "../orientation/types";
+import { describe, expect, it } from "vitest";
+import {
+  getMockAiGeneratedQuestionsBySegment,
+  getPhase1QuestionsBySegment,
+} from "../orientation/mockData";
 import { OrientationIASession } from "./OrientationIASession";
 
 function renderSession() {
@@ -12,87 +15,164 @@ function renderSession() {
   );
 }
 
-const INTRO_RESPONSE: OrientationQuestionsResponse = {
-  stage: "intro",
-  questions: [
-    {
-      id: "education-level",
-      prompt: "Quel est ton niveau actuel ?",
-      inputPlaceholder: "Ex: Premiere, Terminale...",
-      options: [
-        { id: "lycee", label: "Lycee" },
-        { id: "terminal", label: "Terminale" },
-      ],
-    },
-    {
-      id: "motivation-core",
-      prompt: "Quelle mission te motive le plus ?",
-      inputPlaceholder: "Ex: Construire des apps",
-      options: [
-        { id: "build", label: "Construire" },
-        { id: "support", label: "Accompagner" },
-      ],
-    },
-  ],
-};
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
-let fetchMock: ReturnType<typeof vi.fn>;
+function clickChoiceByLabel(label: string) {
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: new RegExp(escapeRegExp(label), "i"),
+    })
+  );
+}
 
-beforeEach(() => {
-  fetchMock = vi.fn().mockResolvedValue({
-    ok: true,
-    json: async () => INTRO_RESPONSE,
+function getSubmitButton(label: string) {
+  return screen.getByRole("button", {
+    name: new RegExp(escapeRegExp(label), "i"),
   });
-  vi.stubGlobal("fetch", fetchMock);
-});
+}
 
-afterEach(() => {
-  vi.unstubAllGlobals();
-});
+async function completeSegmentAndPhase1(segment: "lyceen") {
+  const phase1Questions = getPhase1QuestionsBySegment(segment);
+
+  clickChoiceByLabel("Lyceen");
+  fireEvent.click(getSubmitButton("Demarrer le quiz"));
+
+  await waitFor(() => {
+    expect(screen.getByTestId("quiz-question-full").textContent).toContain(
+      phase1Questions[0].questionText
+    );
+  });
+
+  for (const question of phase1Questions) {
+    await waitFor(() => {
+      expect(screen.getByTestId("quiz-question-full").textContent).toContain(
+        question.questionText
+      );
+    });
+
+    const firstOption = question.options[0];
+
+    if (firstOption) {
+      clickChoiceByLabel(firstOption.title);
+    }
+
+    fireEvent.click(getSubmitButton(question.ui_config.submitButtonText));
+  }
+}
 
 describe("OrientationIASession", () => {
-  it("renders the initial immersive quiz state", async () => {
+  it("renders the segment personality entry question", () => {
     renderSession();
 
-    expect(await screen.findByText("Session active")).toBeInTheDocument();
-    expect(await screen.findByTestId("quiz-question-full")).toHaveTextContent(
-      INTRO_RESPONSE.questions[0].prompt
+    expect(screen.getByText("Session active")).toBeTruthy();
+    expect(screen.getByTestId("quiz-question-full").textContent).toContain(
+      "Quel est ton type de personnalite ?"
     );
-    expect(screen.getByText("Cloturer la session")).toBeInTheDocument();
+    expect(screen.getByText("Cloturer la session")).toBeTruthy();
   });
 
-  it("moves from one quiz question to the next after selecting a choice", async () => {
+  it("moves to phase1 questions after selecting a personality segment", async () => {
     renderSession();
 
-    fireEvent.click(
-      await screen.findByRole("button", {
-        name: /Lycee/i,
-      })
-    );
+    const phase1Questions = getPhase1QuestionsBySegment("lyceen");
+
+    clickChoiceByLabel("Lyceen");
+    fireEvent.click(getSubmitButton("Demarrer le quiz"));
 
     await waitFor(() => {
-      expect(screen.getByTestId("quiz-question-full")).toHaveTextContent(
-        INTRO_RESPONSE.questions[1].prompt
+      expect(screen.getByTestId("quiz-question-full").textContent).toContain(
+        phase1Questions[0].questionText
       );
+    });
+  });
+
+  it("allows going back during phase1 questions", async () => {
+    renderSession();
+
+    const phase1Questions = getPhase1QuestionsBySegment("lyceen");
+
+    clickChoiceByLabel("Lyceen");
+    fireEvent.click(getSubmitButton("Demarrer le quiz"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("quiz-question-full").textContent).toContain(
+        phase1Questions[0].questionText
+      );
+    });
+
+    clickChoiceByLabel(phase1Questions[0].options[0].title);
+    fireEvent.click(getSubmitButton(phase1Questions[0].ui_config.submitButtonText));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("quiz-question-full").textContent).toContain(
+        phase1Questions[1].questionText
+      );
+    });
+
+    fireEvent.click(getSubmitButton("Question precedente"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("quiz-question-full").textContent).toContain(
+        phase1Questions[0].questionText
+      );
+    });
+  });
+
+  it("shows the 3 IA questions before chat and disables back navigation there", async () => {
+    renderSession();
+
+    await completeSegmentAndPhase1("lyceen");
+
+    const aiQuestions = getMockAiGeneratedQuestionsBySegment("lyceen", 3);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("quiz-question-full").textContent).toContain(
+        aiQuestions[0].questionText
+      );
+    });
+
+    expect(
+      screen.queryByRole("button", { name: /Question precedente/i })
+    ).toBeNull();
+    expect(screen.queryByText("Conseiller Orientation IA")).toBeNull();
+
+    for (const question of aiQuestions) {
+      await waitFor(() => {
+        expect(screen.getByTestId("quiz-question-full").textContent).toContain(
+          question.questionText
+        );
+      });
+
+      const firstOption = question.options[0];
+
+      if (firstOption) {
+        clickChoiceByLabel(firstOption.title);
+      }
+
+      fireEvent.click(getSubmitButton(question.ui_config.submitButtonText));
+    }
+
+    await waitFor(() => {
+      expect(screen.getByText("Conseiller Orientation IA")).toBeTruthy();
     });
   });
 
   it("closes and archives the session when clicking close", async () => {
     renderSession();
 
-    await screen.findByText("Session active");
     fireEvent.click(screen.getByRole("button", { name: /Cloturer la session/i }));
 
     await waitFor(() => {
       expect(
         screen.getByText("Cette session est terminee et archivee.")
-      ).toBeInTheDocument();
+      ).toBeTruthy();
     });
 
     expect(
       screen.getByRole("button", { name: /Exporter en PDF/i })
-    ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Imprimer/i })).toBeInTheDocument();
+    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Imprimer/i })).toBeTruthy();
   });
-
 });

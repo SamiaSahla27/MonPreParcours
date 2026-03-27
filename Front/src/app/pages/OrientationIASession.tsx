@@ -1,24 +1,21 @@
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useNavigate } from "react-router";
-import { SendHorizontal } from "lucide-react";
-import {
-  fetchIntroQuestions,
-  startOrientationSession,
-  completeOrientationSession,
-} from "../orientation/api";
+import { ChevronLeft, SendHorizontal } from "lucide-react";
 import {
   DEFAULT_VERDICT,
+  SEGMENT_PROFILE_OPTIONS,
   buildVerdictAsFirstMessage,
   getAssistantFollowUpReply,
+  getMockAiGeneratedQuestionsBySegment,
+  getPhase1QuestionsBySegment,
+  getSegmentLabel,
 } from "../orientation/mockData";
 import {
-  AdvisorVerdict,
   ChatMessage,
-  EducationLevel,
-  QuestionStage,
-  QuizAnswer,
-  QuizQuestion,
+  OrientationSegment,
+  PhaseQuestion,
+  PhaseQuestionAnswer,
   SessionPhase,
 } from "../orientation/types";
 import { ChatMessageBubble } from "../orientation/components/ChatMessageBubble";
@@ -28,7 +25,28 @@ import { NeuralPulseCorner } from "../orientation/components/NeuralPulseCorner";
 import { SessionTopBar } from "../orientation/components/SessionTopBar";
 import { TypewriterText } from "../orientation/components/TypewriterText";
 
-const ASSISTANT_REPLY_DELAY_MS = import.meta.env.MODE === "test" ? 0 : 900;
+const viteMode = (import.meta as ImportMeta & { env?: { MODE?: string } }).env?.MODE;
+const VERDICT_DELAY_MS = viteMode === "test" ? 0 : 1600;
+const ASSISTANT_REPLY_DELAY_MS = viteMode === "test" ? 0 : 900;
+
+const SEGMENT_SELECTION_QUESTION: PhaseQuestion = {
+  id: "SEGMENT-SELECT",
+  db_key: "type_personnalite",
+  type: "single",
+  segment: "lyceen",
+  questionText: "Quel est ton type de personnalite ?",
+  subText: "Choisis le profil qui te correspond pour definir ta phase",
+  options: SEGMENT_PROFILE_OPTIONS.map((option) => ({
+    title: option.label,
+    value: option.segment,
+    subtitle: option.helper,
+  })),
+  ui_config: {
+    allowFreeText: false,
+    submitButtonText: "Demarrer le quiz",
+    helperNote: "Cette etape determine les questions adaptees a ton profil.",
+  },
+};
 
 function createMessageId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
@@ -38,15 +56,12 @@ export function OrientationIASession() {
   const navigate = useNavigate();
 
   const [phase, setPhase] = useState<SessionPhase>("quiz");
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [questionStage, setQuestionStage] = useState<QuestionStage>("intro");
-  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
-  const [introAnswers, setIntroAnswers] = useState<QuizAnswer[]>([]);
-  const [followUpAnswers, setFollowUpAnswers] = useState<QuizAnswer[]>([]);
-  const [questionLoading, setQuestionLoading] = useState(true);
-  const [questionError, setQuestionError] = useState<string | null>(null);
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [quizLocked, setQuizLocked] = useState(false);
+  const [selectedSegment, setSelectedSegment] = useState<OrientationSegment | null>(null);
+  const [quizQuestionIndex, setQuizQuestionIndex] = useState(0);
+  const [aiQuestionIndex, setAiQuestionIndex] = useState(0);
+  const [phase1Answers, setPhase1Answers] = useState<PhaseQuestionAnswer[]>([]);
+  const [aiAnswers, setAiAnswers] = useState<PhaseQuestionAnswer[]>([]);
+  const [selectedOptionValues, setSelectedOptionValues] = useState<string[]>([]);
   const [customAnswer, setCustomAnswer] = useState("");
   const [archived, setArchived] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -55,190 +70,285 @@ export function OrientationIASession() {
 
   const exportContainerRef = useRef<HTMLDivElement | null>(null);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
+  const generationTimeoutRef = useRef<number | null>(null);
   const replyTimeoutRef = useRef<number | null>(null);
 
-  const currentQuestion = questions[currentQuestionIndex];
-  const stageAnswers = questionStage === "intro" ? introAnswers : followUpAnswers;
+  const phase1Questions = useMemo(() => {
+    if (!selectedSegment) {
+      return [];
+    }
+
+    return getPhase1QuestionsBySegment(selectedSegment);
+  }, [selectedSegment]);
+
+  const aiGeneratedQuestions = useMemo(() => {
+    if (!selectedSegment) {
+      return [];
+    }
+
+    return getMockAiGeneratedQuestionsBySegment(selectedSegment, 3);
+  }, [selectedSegment]);
+
+  const currentQuestion = useMemo(() => {
+    if (phase === "quiz") {
+      if (quizQuestionIndex === 0) {
+        return SEGMENT_SELECTION_QUESTION;
+      }
+
+      return phase1Questions[quizQuestionIndex - 1] ?? null;
+    }
+
+    if (phase === "ai-quiz") {
+      return aiGeneratedQuestions[aiQuestionIndex] ?? null;
+    }
+
+    return null;
+  }, [aiGeneratedQuestions, aiQuestionIndex, phase, phase1Questions, quizQuestionIndex]);
+
+  const canGoBack = phase === "quiz" && quizQuestionIndex > 0 && !archived;
 
   const progressLabel = useMemo(() => {
-    if (phase !== "quiz" || questions.length === 0) {
-      const total = introAnswers.length + followUpAnswers.length;
-      return `Quiz termine - ${total} reponses`;
+    if (phase === "quiz") {
+      const total = 1 + phase1Questions.length;
+      return `Question ${Math.min(quizQuestionIndex + 1, total)}/${total}`;
     }
-    const stageLabel = questionStage === "intro" ? "Profil" : "Precision";
-    return `Bloc ${stageLabel} - Question ${currentQuestionIndex + 1}/${questions.length}`;
-  }, [
-    phase,
-    questionStage,
-    currentQuestionIndex,
-    questions.length,
-    introAnswers.length,
-    followUpAnswers.length,
-  ]);
+
+    if (phase === "ai-quiz") {
+      const total = Math.max(aiGeneratedQuestions.length, 1);
+      return `Questions IA ${Math.min(aiQuestionIndex + 1, total)}/${total}`;
+    }
+
+    if (phase === "generating") {
+      return "Analyse IA en cours";
+    }
+
+    return `Analyse terminee - ${phase1Answers.length + aiAnswers.length} reponses`;
+  }, [aiAnswers.length, aiGeneratedQuestions.length, aiQuestionIndex, phase, phase1Answers.length, phase1Questions.length, quizQuestionIndex]);
+
+  const canSubmitCurrentQuestion = useMemo(() => {
+    if (!currentQuestion) {
+      return false;
+    }
+
+    const trimmed = customAnswer.trim();
+
+    if (currentQuestion.type === "libre") {
+      return trimmed.length > 0;
+    }
+
+    if (selectedOptionValues.length > 0) {
+      return true;
+    }
+
+    if (currentQuestion.ui_config.allowFreeText) {
+      return trimmed.length > 0;
+    }
+
+    return false;
+  }, [currentQuestion, customAnswer, selectedOptionValues.length]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [chatMessages, assistantTyping, phase]);
 
   useEffect(() => {
+    const storedAnswer =
+      phase === "quiz" ? phase1Answers[quizQuestionIndex] : phase === "ai-quiz" ? aiAnswers[aiQuestionIndex] : undefined;
+
+    setSelectedOptionValues(storedAnswer?.selectedValues ?? []);
+    setCustomAnswer(storedAnswer?.freeText ?? "");
+  }, [aiAnswers, aiQuestionIndex, phase, phase1Answers, quizQuestionIndex]);
+
+  useEffect(() => {
     return () => {
+      if (generationTimeoutRef.current) {
+        window.clearTimeout(generationTimeoutRef.current);
+      }
+
       if (replyTimeoutRef.current) {
         window.clearTimeout(replyTimeoutRef.current);
       }
     };
   }, []);
 
-  const loadIntroQuestions = useCallback(async () => {
-    setQuestionError(null);
-    setQuestionStage("intro");
-    setQuestions([]);
-    setCurrentQuestionIndex(0);
-    setIntroAnswers([]);
-    setFollowUpAnswers([]);
-    setSessionId(null);
-    setPhase("quiz");
-    setArchived(false);
-    setChatMessages([]);
-    setChatInput("");
-    setQuestionLoading(true);
-
-    try {
-      const response = await fetchIntroQuestions();
-      setQuestions(response.questions);
-    } catch (error) {
-      setQuestionError("Impossible de charger le questionnaire. Verifie l'API puis reessaie.");
-    } finally {
-      setQuestionLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadIntroQuestions();
-  }, [loadIntroQuestions]);
-
-  function presentVerdict(verdict: AdvisorVerdict, archiveAfter = false) {
-    setChatMessages((previous) => {
-      if (previous.length > 0) {
-        return previous;
-      }
-      return [buildVerdictAsFirstMessage(verdict)];
-    });
-    setPhase("chat");
-    if (archiveAfter) {
-      setArchived(true);
+  function clearGenerationTimeout() {
+    if (generationTimeoutRef.current) {
+      window.clearTimeout(generationTimeoutRef.current);
+      generationTimeoutRef.current = null;
     }
   }
 
-  async function handleIntroCompletion(updatedAnswers: QuizAnswer[]) {
-    const educationAnswer = updatedAnswers.find((answer) => answer.questionId === "education-level");
-    const educationLevel = educationAnswer?.selectedOptionId as EducationLevel | undefined;
+  function triggerVerdict(archiveAfter = false, segmentOverride?: OrientationSegment | null) {
+    clearGenerationTimeout();
 
-    if (!educationLevel) {
-      setQuestionError("Merci de selectionner ton niveau d'etudes pour personnaliser la suite.");
-      setQuizLocked(false);
-      return;
-    }
+    const effectiveSegment = segmentOverride ?? selectedSegment;
+    const segmentLabel = effectiveSegment ? getSegmentLabel(effectiveSegment) : undefined;
 
-    setQuestionError(null);
-    setQuestionLoading(true);
+    setPhase("generating");
+    generationTimeoutRef.current = window.setTimeout(() => {
+      setChatMessages((previous) => {
+        if (previous.length > 0) {
+          return previous;
+        }
 
-    try {
-      const response = await startOrientationSession({
-        educationLevel,
-        initialAnswers: updatedAnswers,
+        return [buildVerdictAsFirstMessage(DEFAULT_VERDICT, segmentLabel)];
       });
-      setSessionId(response.sessionId);
-      setQuestionStage(response.stage);
-      setQuestions(response.questions);
-      setCurrentQuestionIndex(0);
-      setCustomAnswer("");
-      setFollowUpAnswers([]);
-      setPhase("quiz");
-    } catch (error) {
-      setQuestionError("Impossible de charger les questions suivantes. Reessaie dans un instant.");
-    } finally {
-      setQuestionLoading(false);
-      setQuizLocked(false);
-    }
+
+      setPhase("chat");
+
+      if (archiveAfter) {
+        setArchived(true);
+      }
+    }, VERDICT_DELAY_MS);
   }
 
-  async function handleFollowUpCompletion(updatedAnswers: QuizAnswer[]) {
-    if (!sessionId) {
-      setQuestionError("La session a expire. Relance le questionnaire.");
-      setQuizLocked(false);
-      return;
-    }
-
-    setQuestionError(null);
+  function triggerAiQuestionPhase(segment: OrientationSegment) {
+    clearGenerationTimeout();
     setPhase("generating");
 
-    try {
-      const { verdict } = await completeOrientationSession(sessionId, {
-        followUpAnswers: updatedAnswers,
-      });
-      presentVerdict(verdict ?? DEFAULT_VERDICT);
-    } catch (error) {
-      setQuestionError(
-        "Impossible de generer la recommandation personnalisee. Affichage du plan generique."
-      );
-      presentVerdict(DEFAULT_VERDICT);
-    } finally {
-      setQuizLocked(false);
-      setSessionId(null);
-    }
+    generationTimeoutRef.current = window.setTimeout(() => {
+      const generated = getMockAiGeneratedQuestionsBySegment(segment, 3);
+
+      if (generated.length === 0) {
+        triggerVerdict(false, segment);
+        return;
+      }
+
+      setAiAnswers([]);
+      setAiQuestionIndex(0);
+      setPhase("ai-quiz");
+    }, VERDICT_DELAY_MS);
   }
 
-  function goToNextStep(answer: QuizAnswer) {
+  function toggleOptionValue(value: string) {
     if (!currentQuestion) {
       return;
     }
 
-    const updatedAnswers = [...stageAnswers, answer];
-
-    if (questionStage === "intro") {
-      setIntroAnswers(updatedAnswers);
-    } else {
-      setFollowUpAnswers(updatedAnswers);
+    if (currentQuestion.type === "single") {
+      setSelectedOptionValues([value]);
+      return;
     }
 
-    const isLastQuestion = currentQuestionIndex >= questions.length - 1;
-    if (isLastQuestion) {
-      setQuizLocked(true);
-      if (questionStage === "intro") {
-        void handleIntroCompletion(updatedAnswers);
-      } else {
-        void handleFollowUpCompletion(updatedAnswers);
+    if (currentQuestion.type !== "multi") {
+      return;
+    }
+
+    const maxSelections = currentQuestion.ui_config.maxSelections ?? 2;
+
+    setSelectedOptionValues((previous) => {
+      if (previous.includes(value)) {
+        return previous.filter((item) => item !== value);
       }
-      return;
-    }
 
-    setCurrentQuestionIndex((prev) => prev + 1);
-    setCustomAnswer("");
-  }
+      if (previous.length >= maxSelections) {
+        return previous;
+      }
 
-  function handleOptionChoice(optionId: string, optionLabel: string) {
-    if (!currentQuestion || quizLocked) {
-      return;
-    }
-
-    goToNextStep({
-      questionId: currentQuestion.id,
-      selectedOptionId: optionId,
-      selectedOptionLabel: optionLabel,
+      return [...previous, value];
     });
   }
 
-  function handleCustomAnswerSubmit(event: FormEvent) {
-    event.preventDefault();
+  function buildCurrentAnswer(question: PhaseQuestion): PhaseQuestionAnswer {
+    const selectedTitles = question.options
+      .filter((option) => selectedOptionValues.includes(option.value))
+      .map((option) => option.title);
     const trimmed = customAnswer.trim();
-    if (!trimmed || !currentQuestion || quizLocked) {
+
+    return {
+      questionId: question.id,
+      dbKey: question.db_key,
+      selectedValues: selectedOptionValues,
+      selectedTitles,
+      freeText: trimmed.length > 0 ? trimmed : undefined,
+    };
+  }
+
+  function saveCurrentAnswer(answer: PhaseQuestionAnswer) {
+    if (phase === "quiz") {
+      setPhase1Answers((previous) => {
+        const next = [...previous];
+        next[quizQuestionIndex] = answer;
+
+        return next.slice(0, quizQuestionIndex + 1);
+      });
+
       return;
     }
 
-    goToNextStep({
-      questionId: currentQuestion.id,
-      freeText: trimmed,
-    });
+    if (phase === "ai-quiz") {
+      setAiAnswers((previous) => {
+        const next = [...previous];
+        next[aiQuestionIndex] = answer;
+
+        return next.slice(0, aiQuestionIndex + 1);
+      });
+    }
+  }
+
+  function handleQuestionSubmit(event: FormEvent) {
+    event.preventDefault();
+
+    if (!currentQuestion || archived || !canSubmitCurrentQuestion) {
+      return;
+    }
+
+    const answer = buildCurrentAnswer(currentQuestion);
+    saveCurrentAnswer(answer);
+
+    if (phase === "quiz") {
+      if (quizQuestionIndex === 0) {
+        const segmentValue = answer.selectedValues[0] as OrientationSegment | undefined;
+
+        if (!segmentValue) {
+          return;
+        }
+
+        setSelectedSegment(segmentValue);
+        const segmentQuestionCount = getPhase1QuestionsBySegment(segmentValue).length;
+
+        if (segmentQuestionCount === 0) {
+          triggerAiQuestionPhase(segmentValue);
+          return;
+        }
+
+        setQuizQuestionIndex(1);
+        return;
+      }
+
+      if (!selectedSegment) {
+        return;
+      }
+
+      const isLastPhase1Question = quizQuestionIndex >= phase1Questions.length;
+
+      if (isLastPhase1Question) {
+        triggerAiQuestionPhase(selectedSegment);
+        return;
+      }
+
+      setQuizQuestionIndex((previous) => previous + 1);
+      return;
+    }
+
+    if (phase === "ai-quiz") {
+      const isLastAiQuestion = aiQuestionIndex >= aiGeneratedQuestions.length - 1;
+
+      if (isLastAiQuestion) {
+        triggerVerdict(false);
+        return;
+      }
+
+      setAiQuestionIndex((previous) => previous + 1);
+    }
+  }
+
+  function handleGoBack() {
+    if (!canGoBack) {
+      return;
+    }
+
+    setQuizQuestionIndex((previous) => previous - 1);
   }
 
   function handleCloseSession() {
@@ -251,8 +361,7 @@ export function OrientationIASession() {
       return;
     }
 
-    setPhase("generating");
-    presentVerdict(DEFAULT_VERDICT, true);
+    triggerVerdict(true);
   }
 
   function handleSendMessage(event: FormEvent) {
@@ -363,91 +472,106 @@ export function OrientationIASession() {
           </div>
         ) : null}
 
-        {questionError ? (
-          <div className="no-print mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
-            <p>{questionError}</p>
-            {phase === "quiz" && questionStage === "intro" ? (
-              <button
-                type="button"
-                onClick={() => void loadIntroQuestions()}
-                className="mt-2 rounded-xl border border-rose-300 px-3 py-1 text-xs font-semibold text-rose-900"
-              >
-                Recharger le questionnaire
-              </button>
-            ) : null}
-          </div>
-        ) : null}
-
         <main ref={exportContainerRef} className="mt-4 flex flex-1 flex-col">
           <AnimatePresence mode="wait">
-            {phase === "quiz" ? (
-              questionLoading ? (
-                <motion.section
-                  key="quiz-loading"
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -12 }}
-                  transition={{ duration: 0.3 }}
-                  className="mx-auto my-auto flex w-full max-w-4xl items-center justify-center"
-                >
-                  <FuturisticThinking />
-                </motion.section>
-              ) : currentQuestion ? (
-                <motion.section
-                  key="quiz"
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -12 }}
-                  transition={{ duration: 0.3 }}
-                  className="mx-auto my-auto w-full max-w-4xl rounded-3xl border border-indigo-200/60 bg-white/70 p-6 shadow-[0_20px_70px_rgba(92,65,188,0.14)] backdrop-blur-xl md:p-8"
-                >
-                  <div className="mb-6 flex items-center justify-between gap-3">
-                    <span className="rounded-full bg-indigo-100 px-3 py-1 text-xs font-bold uppercase tracking-[0.11em] text-indigo-700">
-                      Session active
-                    </span>
-                    <span className="text-sm font-semibold text-indigo-800">{progressLabel}</span>
-                  </div>
+            {(phase === "quiz" || phase === "ai-quiz") && currentQuestion ? (
+              <motion.section
+                key={`${phase}-${quizQuestionIndex}-${aiQuestionIndex}-${selectedSegment ?? "none"}`}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                transition={{ duration: 0.3 }}
+                className="mx-auto my-auto w-full max-w-4xl rounded-3xl border border-indigo-200/60 bg-white/70 p-6 shadow-[0_20px_70px_rgba(92,65,188,0.14)] backdrop-blur-xl md:p-8"
+              >
+                <div className="mb-6 flex items-center justify-between gap-3">
+                  <span className="rounded-full bg-indigo-100 px-3 py-1 text-xs font-bold uppercase tracking-[0.11em] text-indigo-700">
+                    {phase === "ai-quiz" ? "Questions IA" : "Session active"}
+                  </span>
+                  <span className="text-sm font-semibold text-indigo-800">{progressLabel}</span>
+                </div>
 
-                  <div className="rounded-2xl border border-indigo-200/60 bg-white/80 px-5 py-6">
-                    <TypewriterText
-                      text={currentQuestion.prompt}
-                      className="text-center text-2xl font-extrabold leading-tight text-indigo-950"
-                    />
-                    <p data-testid="quiz-question-full" className="sr-only">
-                      {currentQuestion.prompt}
+                <div className="rounded-2xl border border-indigo-200/60 bg-white/80 px-5 py-6">
+                  <TypewriterText
+                    text={currentQuestion.questionText}
+                    className="text-center text-2xl font-extrabold leading-tight text-indigo-950"
+                  />
+                  <p data-testid="quiz-question-full" className="sr-only">
+                    {currentQuestion.questionText}
+                  </p>
+                  {currentQuestion.subText ? (
+                    <p className="mt-2 text-center text-sm font-medium text-indigo-800/80">
+                      {currentQuestion.subText}
                     </p>
-                  </div>
+                  ) : null}
+                  {currentQuestion.ui_config.helperNote ? (
+                    <p className="mt-2 text-center text-sm text-indigo-700/85">
+                      {currentQuestion.ui_config.helperNote}
+                    </p>
+                  ) : null}
+                </div>
 
+                {currentQuestion.options.length > 0 ? (
                   <div className="mt-6 grid gap-3 md:grid-cols-2">
-                    {currentQuestion.options.map((option) => (
-                      <ChoiceCard
-                        key={option.id}
-                        label={option.label}
-                        helper={option.helper}
-                        onClick={() => handleOptionChoice(option.id, option.label)}
-                      />
-                    ))}
-                  </div>
+                    {currentQuestion.options.map((option) => {
+                      const isSelected = selectedOptionValues.includes(option.value);
 
-                  <form onSubmit={handleCustomAnswerSubmit} className="mt-5 space-y-3">
+                      return (
+                        <ChoiceCard
+                          key={option.value}
+                          label={option.title}
+                          helper={option.subtitle}
+                          selected={isSelected}
+                          onClick={() => toggleOptionValue(option.value)}
+                        />
+                      );
+                    })}
+                  </div>
+                ) : null}
+
+                {currentQuestion.type === "multi" && currentQuestion.ui_config.maxSelections ? (
+                  <p className="mt-3 text-xs font-semibold uppercase tracking-[0.09em] text-indigo-700/80">
+                    Choisis jusqu'a {currentQuestion.ui_config.maxSelections} options.
+                  </p>
+                ) : null}
+
+                {(currentQuestion.type === "libre" || currentQuestion.ui_config.allowFreeText) ? (
+                  <div className="mt-5 space-y-3">
                     <label className="text-sm font-semibold text-indigo-900">
-                      Tu peux aussi ecrire une reponse libre
+                      {currentQuestion.ui_config.freeTextPrompt || "Tu peux aussi ecrire une reponse libre"}
                     </label>
                     <textarea
                       value={customAnswer}
                       onChange={(event) => setCustomAnswer(event.target.value)}
-                      placeholder={currentQuestion.inputPlaceholder}
+                      placeholder={
+                        currentQuestion.ui_config.freeTextPlaceholder ||
+                        "Ecris ta reponse ici"
+                      }
                       className="min-h-24 w-full rounded-2xl border border-indigo-200/70 bg-white px-4 py-3 text-sm text-indigo-950 outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-200/40"
                     />
+                  </div>
+                ) : null}
+
+                <form onSubmit={handleQuestionSubmit} className="mt-6 flex flex-wrap items-center gap-3">
+                  {canGoBack ? (
                     <button
-                      type="submit"
-                      className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-indigo-700"
+                      type="button"
+                      onClick={handleGoBack}
+                      className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-white px-4 py-2.5 text-sm font-bold text-indigo-800 transition hover:bg-indigo-50"
                     >
-                      Valider cette reponse
+                      <ChevronLeft size={16} />
+                      Question precedente
                     </button>
-                  </form>
-                </motion.section>
-              ) : null
+                  ) : null}
+
+                  <button
+                    type="submit"
+                    disabled={!canSubmitCurrentQuestion}
+                    className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {currentQuestion.ui_config.submitButtonText || "Suivant"}
+                  </button>
+                </form>
+              </motion.section>
             ) : null}
 
             {phase === "generating" ? (
@@ -475,7 +599,7 @@ export function OrientationIASession() {
                 <div className="border-b border-indigo-200/70 px-5 py-4">
                   <h3 className="text-lg font-bold text-indigo-950">Conseiller Orientation IA</h3>
                   <p className="text-sm text-indigo-800/80">
-                    Conversation continue: pose tes questions et affine ton plan.
+                    Verdict genere apres le quiz de phase 1 puis les 3 questions IA.
                   </p>
                 </div>
 

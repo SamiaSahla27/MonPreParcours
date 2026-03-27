@@ -1,4 +1,238 @@
-import { AdvisorVerdict, ChatMessage, SchoolRecommendation, TimelineStep } from "./types";
+import phase1Raw from "./data/phase1.json?raw";
+import phase2Raw from "./data/phase2.json?raw";
+import {
+  AdvisorVerdict,
+  ChatMessage,
+  OrientationSegment,
+  PhaseQuestion,
+  PhaseQuestionBank,
+  PreProfileQuestion,
+  SchoolRecommendation,
+  SegmentProfileOption,
+  TimelineStep,
+} from "./types";
+
+const PHASE1_QUIZ_BY_SEGMENT = JSON.parse(phase1Raw) as PhaseQuestionBank;
+const PHASE2_QUIZ_BY_SEGMENT = JSON.parse(phase2Raw) as PhaseQuestionBank;
+
+export const PRE_PROFILE_GENERIC_QUESTIONS: PreProfileQuestion[] = [
+  {
+    id: "G1",
+    db_key: "objectif_global",
+    type: "single",
+    questionText: "Avant de commencer, quel est ton objectif principal aujourd'hui ?",
+    subText: "Question 1 sur 10",
+    options: [
+      { title: "Mieux me connaitre", value: "self_discovery" },
+      { title: "Trouver une voie concrete", value: "concrete_path" },
+      { title: "Comparer plusieurs options", value: "compare_options" },
+    ],
+    ui_config: {
+      allowFreeText: false,
+      submitButtonText: "Suivant",
+      helperNote: "On pose d'abord un cadre general avant le profil detaille.",
+    },
+  },
+  {
+    id: "G2",
+    db_key: "style_apprentissage",
+    type: "single",
+    questionText: "Quel style d'apprentissage te correspond le mieux ?",
+    subText: "Question 2 sur 10",
+    options: [
+      { title: "Projets pratiques", value: "practice" },
+      { title: "Cours structures", value: "structured" },
+      { title: "Mix theorie + pratique", value: "hybrid" },
+    ],
+    ui_config: {
+      allowFreeText: false,
+      submitButtonText: "Suivant",
+    },
+  },
+  {
+    id: "G3",
+    db_key: "force_naturelle",
+    type: "single",
+    questionText: "Sur quoi te sens-tu naturellement plus fort ?",
+    subText: "Question 3 sur 10",
+    options: [
+      { title: "Creativite", value: "creative" },
+      { title: "Analyse", value: "analysis" },
+      { title: "Communication", value: "communication" },
+    ],
+    ui_config: {
+      allowFreeText: false,
+      submitButtonText: "Suivant",
+    },
+  },
+  {
+    id: "G4",
+    db_key: "mode_collaboration",
+    type: "single",
+    questionText: "Tu preferes avancer comment ?",
+    subText: "Question 4 sur 10",
+    options: [
+      { title: "En equipe", value: "team" },
+      { title: "En autonomie", value: "solo" },
+      { title: "Un peu des deux", value: "mixed" },
+    ],
+    ui_config: {
+      allowFreeText: false,
+      submitButtonText: "Suivant",
+    },
+  },
+  {
+    id: "G5",
+    db_key: "type_impact",
+    type: "single",
+    questionText: "Quel type d'impact te motive le plus ?",
+    subText: "Question 5 sur 10",
+    options: [
+      { title: "Aider les personnes", value: "human" },
+      { title: "Construire des solutions", value: "builder" },
+      { title: "Ameliorer des systemes", value: "systems" },
+    ],
+    ui_config: {
+      allowFreeText: false,
+      submitButtonText: "Suivant",
+    },
+  },
+  {
+    id: "G6",
+    db_key: "horizon_temps",
+    type: "single",
+    questionText: "Sur quel horizon veux-tu voir des resultats ?",
+    subText: "Question 6 sur 10",
+    options: [
+      { title: "Court terme", value: "short" },
+      { title: "Moyen terme", value: "medium" },
+      { title: "Long terme", value: "long" },
+    ],
+    ui_config: {
+      allowFreeText: false,
+      submitButtonText: "Suivant",
+    },
+  },
+  {
+    id: "G7",
+    db_key: "format_preferentiel",
+    type: "single",
+    questionText: "Quel format de parcours te rassure le plus ?",
+    subText: "Question 7 sur 10",
+    options: [
+      { title: "Concret et progressif", value: "progressive" },
+      { title: "Exploratoire et ouvert", value: "exploratory" },
+      { title: "Cadre tres structure", value: "very_structured" },
+    ],
+    ui_config: {
+      allowFreeText: false,
+      submitButtonText: "Suivant",
+    },
+  },
+  {
+    id: "G8",
+    db_key: "rapport_donnees",
+    type: "single",
+    questionText: "Quel est ton rapport aux donnees et chiffres ?",
+    subText: "Question 8 sur 10",
+    options: [
+      { title: "J'aime bien analyser", value: "data_positive" },
+      { title: "Je prefere l'operationnel", value: "data_neutral" },
+      { title: "Je veux progresser", value: "data_learning" },
+    ],
+    ui_config: {
+      allowFreeText: false,
+      submitButtonText: "Suivant",
+    },
+  },
+  {
+    id: "G9",
+    db_key: "contrainte_mobilite",
+    type: "single",
+    questionText: "As-tu une contrainte forte de mobilite ?",
+    subText: "Question 9 sur 10",
+    options: [
+      { title: "Je reste dans ma ville", value: "fixed_city" },
+      { title: "Je peux bouger en France", value: "france_mobile" },
+      { title: "Je suis ouvert a l'international", value: "global_mobile" },
+    ],
+    ui_config: {
+      allowFreeText: false,
+      submitButtonText: "Suivant",
+    },
+  },
+  {
+    id: "G10",
+    db_key: "niveau_engagement",
+    type: "single",
+    questionText: "Pret pour un diagnostic complet en plusieurs etapes ?",
+    subText: "Question 10 sur 10",
+    options: [
+      { title: "Oui, on y va", value: "ready_yes" },
+      { title: "Oui, mais progressivement", value: "ready_soft" },
+      { title: "Je veux rester simple", value: "ready_light" },
+    ],
+    ui_config: {
+      allowFreeText: false,
+      submitButtonText: "Passer au profil",
+      helperNote: "Apres cette etape, on te demande ton profil pour personnaliser finement.",
+    },
+  },
+];
+
+export const SEGMENT_PROFILE_OPTIONS: SegmentProfileOption[] = [
+  {
+    segment: "collegien",
+    label: "Collegien",
+    helper: "Tu es au college et tu prepares les premiers choix post-3e.",
+  },
+  {
+    segment: "lyceen",
+    label: "Lyceen",
+    helper: "Tu prevois ton post-bac et les choix de formations.",
+  },
+  {
+    segment: "etudiant",
+    label: "Etudiant",
+    helper: "Tu veux ajuster ton parcours ou reorienter tes etudes.",
+  },
+  {
+    segment: "adulte",
+    label: "Adulte",
+    helper: "Tu es en reconversion ou en repositionnement professionnel.",
+  },
+];
+
+export function getSegmentLabel(segment: OrientationSegment): string {
+  const item = SEGMENT_PROFILE_OPTIONS.find((option) => option.segment === segment);
+  return item?.label ?? segment;
+}
+
+export function getPhase1QuestionsBySegment(segment: OrientationSegment): PhaseQuestion[] {
+  return PHASE1_QUIZ_BY_SEGMENT[segment] ?? [];
+}
+
+export function getMockAiGeneratedQuestionsBySegment(
+  segment: OrientationSegment,
+  count = 3
+): PhaseQuestion[] {
+  return (PHASE2_QUIZ_BY_SEGMENT[segment] ?? []).slice(0, count).map((question, index, list) => {
+    const isLast = index === list.length - 1;
+
+    return {
+      ...question,
+      id: `AI-${segment}-${index + 1}-${question.id}`,
+      questionText: `Question IA ${index + 1}: ${question.questionText}`,
+      ui_config: {
+        ...question.ui_config,
+        submitButtonText: isLast ? "Terminer les questions IA" : "Question suivante",
+        helperNote:
+          question.ui_config.helperNote ??
+          "Question de precision generee par l'IA pour affiner la recommandation finale.",
+      },
+    };
+  });
+}
 
 export const DEFAULT_TIMELINE: TimelineStep[] = [
   {
@@ -139,9 +373,13 @@ export function getAssistantFollowUpReply(input: string): string {
   return FOLLOW_UP_LIBRARY[randomIndex];
 }
 
-export function buildVerdictAsFirstMessage(verdict: AdvisorVerdict): ChatMessage {
+export function buildVerdictAsFirstMessage(
+  verdict: AdvisorVerdict,
+  segmentLabel?: string
+): ChatMessage {
   const content = [
     `${verdict.title}`,
+    segmentLabel ? `Profil detecte: ${segmentLabel}` : "",
     "",
     verdict.summary,
     "",
@@ -149,7 +387,9 @@ export function buildVerdictAsFirstMessage(verdict: AdvisorVerdict): ChatMessage
     `Niveau de confiance: ${verdict.confidenceLabel}`,
     "",
     `Competences a renforcer: ${verdict.keySkills.join(", ")}`,
-  ].join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   return {
     id: "assistant-verdict",

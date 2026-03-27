@@ -32,6 +32,18 @@ export function PortalHome() {
             >
               Clique sur une carte pour commencer
             </p>
+            <div
+              className="mt-3 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs"
+              style={{
+                background: "linear-gradient(135deg, #6D28D9 0%, #A21CAF 100%)",
+                color: "#FFFFFF",
+                fontFamily: "'Plus Jakarta Sans', sans-serif",
+                fontWeight: 700,
+                boxShadow: "0 8px 24px rgba(109, 40, 217, 0.28)",
+              }}
+            >
+              <span>Orientation IA</span>
+            </div>
           </div>
           <div
             className="hidden sm:flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full"
