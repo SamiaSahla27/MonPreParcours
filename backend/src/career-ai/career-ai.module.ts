@@ -3,7 +3,7 @@ import { CareerAiController } from './career-ai.controller';
 import { CareerAiService } from './career-ai.service';
 
 @Module({
-    controllers: [CareerAiController],
-    providers: [CareerAiService],
+  controllers: [CareerAiController],
+  providers: [CareerAiService],
 })
-export class CareerAiModule { }
+export class CareerAiModule {}

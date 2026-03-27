@@ -11,4 +11,4 @@ import { CareerAiModule } from './career-ai/career-ai.module';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule { }
+export class AppModule {}

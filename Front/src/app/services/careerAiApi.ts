@@ -286,7 +286,7 @@ function mockAnalyzeCareer(params: {
         "Coordinateur amélioration continue",
     ];
 
-    let adviceForYoungPeople: string[] = [
+    const adviceForYoungPeople: string[] = [
         "Développe un profil hybride: compétences métier + maîtrise d’outils IA.",
         "Fais des mises en situation concrètes (stages, simulation, projets).",
         "Mise sur les compétences humaines différenciantes: sang-froid, communication, leadership.",

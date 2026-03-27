@@ -4,10 +4,10 @@ import type { AnalyzeCareerInput } from './career-ai.types';
 
 @Controller('career-ai')
 export class CareerAiController {
-    constructor(private readonly careerAiService: CareerAiService) { }
+  constructor(private readonly careerAiService: CareerAiService) {}
 
-    @Post('analyze')
-    analyzeCareer(@Body() body: AnalyzeCareerInput) {
-        return this.careerAiService.analyzeCareer(body);
-    }
+  @Post('analyze')
+  analyzeCareer(@Body() body: AnalyzeCareerInput) {
+    return this.careerAiService.analyzeCareer(body);
+  }
 }
