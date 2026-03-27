@@ -10,6 +10,10 @@ const LOGO_COLORS: Record<string, string> = {
   DC: "linear-gradient(135deg, #1a1035 0%, #2D1B69 100%)",
   LD: "linear-gradient(135deg, #F97316 0%, #EA580C 100%)",
   LV: "linear-gradient(135deg, #D4AF37 0%, #B8860B 100%)",
+  UB: "linear-gradient(135deg, #A855F7 0%, #7C3AED 100%)",
+  SG: "linear-gradient(135deg, #EF4444 0%, #DC2626 100%)",
+  AB: "linear-gradient(135deg, #0EA5E9 0%, #0284C7 100%)",
+  LO: "linear-gradient(135deg, #EC4899 0%, #DB2777 100%)",
 };
 
 export function CompanyCard({ result }: Props) {

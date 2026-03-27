@@ -13,12 +13,20 @@ export function ExplorationCard({ card, featured = false }: ExplorationCardProps
   const navigate = useNavigate();
   const Icon = card.icon;
 
+  const handleClick = () => {
+    if (card.id === "inclusion") {
+      navigate("/engaged-companies");
+    } else {
+      navigate(`/explore/${card.id}`);
+    }
+  };
+
   return (
     <div
       role="button"
       tabIndex={0}
-      onClick={() => navigate(`/explore/${card.id}`)}
-      onKeyDown={(e) => e.key === "Enter" && navigate(`/explore/${card.id}`)}
+      onClick={handleClick}
+      onKeyDown={(e) => e.key === "Enter" && handleClick()}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       className="relative flex flex-col rounded-2xl overflow-hidden cursor-pointer outline-none focus-visible:ring-2"
@@ -134,7 +142,7 @@ export function ExplorationCard({ card, featured = false }: ExplorationCardProps
             border: `1.5px solid ${hovered ? "transparent" : card.accentColor + "30"}`,
             boxShadow: hovered ? `0 4px 16px ${card.accentColor}40` : "none",
           }}
-          onClick={(e) => { e.stopPropagation(); navigate(`/explore/${card.id}`); }}
+          onClick={(e) => { e.stopPropagation(); handleClick(); }}
         >
           {card.ctaLabel}
           <ArrowRight

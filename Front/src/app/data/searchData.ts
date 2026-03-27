@@ -188,6 +188,76 @@ export const MOCK_RESULTS: SearchResult[] = [
       "Pionnier de la semaine de 4 jours, LDLC mise sur le bien-être et l'inclusion pour attirer et retenir les talents créatifs.",
   },
   {
+    type: "company",
+    id: "lvmh",
+    name: "LVMH",
+    sector: "Luxe & Mode",
+    logo: "LV",
+    labels: [
+      { text: "Label Égalité Pro", color: "#D4AF37", bg: "#FFFBEB" },
+      { text: "Partenaire EllesFontLaCulture", color: "#EC4899", bg: "#FCE7F3" },
+    ],
+    description:
+      "Le groupe de luxe s'engage pour la parité et l'inclusion avec 64% de femmes managers, des programmes de mentorat et des initiatives LGBTQ+.",
+    diversityScore: 82,
+  },
+  {
+    type: "company",
+    id: "ubisoft",
+    name: "Ubisoft",
+    sector: "Jeux vidéo & Tech",
+    logo: "UB",
+    labels: [
+      { text: "Women in Games", color: "#A855F7", bg: "#FAF5FF" },
+      { text: "Top Employeur 2024", color: "#10B981", bg: "#ECFDF5" },
+    ],
+    description:
+      "Studio français engagé dans la diversité : initiatives contre le harcèlement, programmes pour femmes développeuses et personnes neurodivergentes.",
+    diversityScore: 76,
+  },
+  {
+    type: "company",
+    id: "societe-generale",
+    name: "Société Générale",
+    sector: "Banque & Finance",
+    logo: "SG",
+    labels: [
+      { text: "Index égalité 92/100", color: "#10B981", bg: "#ECFDF5" },
+      { text: "Charte diversité", color: "#7C3AED", bg: "#EDE9FE" },
+    ],
+    description:
+      "Acteur historique de l'inclusion bancaire avec des politiques de recrutement sans discrimination, programmes handicap et mentorat intergénérationnel.",
+    diversityScore: 85,
+  },
+  {
+    type: "company",
+    id: "airbus",
+    name: "Airbus",
+    sector: "Aéronautique & Défense",
+    logo: "AB",
+    labels: [
+      { text: "Label Diversité", color: "#7C3AED", bg: "#EDE9FE" },
+      { text: "Mixité ingénierie", color: "#F97316", bg: "#FFF7ED" },
+    ],
+    description:
+      "Géant européen promouvant la diversité culturelle, l'égalité femmes-hommes en ingénierie et l'accessibilité pour personnes handicapées.",
+    diversityScore: 79,
+  },
+  {
+    type: "company",
+    id: "loreal",
+    name: "L'Oréal",
+    sector: "Beauté & Cosmétiques",
+    logo: "LO",
+    labels: [
+      { text: "Top Employeur 2024", color: "#10B981", bg: "#ECFDF5" },
+      { text: "Diversité beauté", color: "#EC4899", bg: "#FCE7F3" },
+    ],
+    description:
+      "Leader mondial de la beauté inclusive : 70% de femmes en management, représentation multiculturelle et politiques LGBTQ+ avant-gardistes.",
+    diversityScore: 90,
+  },
+  {
     type: "resource",
     id: "figma-ai",
     title: "Figma, Adobe Firefly, Midjourney : l'IA va-t-elle remplacer le designer ?",
