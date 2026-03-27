@@ -9,11 +9,17 @@ export class JwtSocketAuthService {
   authenticate(token: string | undefined): SocketUser | null {
     if (!token) return null;
 
-    const normalized = token.startsWith('Bearer ') ? token.slice('Bearer '.length) : token;
+    const normalized = token.startsWith('Bearer ')
+      ? token.slice('Bearer '.length)
+      : token;
 
     try {
       const claims = this.jwt.verify<JwtClaims>(normalized);
-      if (!claims?.sub || (claims.role !== 'mentor' && claims.role !== 'etudiant')) return null;
+      if (
+        !claims?.sub ||
+        (claims.role !== 'mentor' && claims.role !== 'etudiant')
+      )
+        return null;
       return { userId: claims.sub, role: claims.role };
     } catch {
       return null;

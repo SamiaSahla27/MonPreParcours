@@ -18,7 +18,9 @@ export class ChatHistoryStore {
     this.storePath = path.join(dataDir, 'chat-history.json');
   }
 
-  async appendMessage(input: Omit<ChatMessage, 'id' | 'createdAt'>): Promise<ChatMessage> {
+  async appendMessage(
+    input: Omit<ChatMessage, 'id' | 'createdAt'>,
+  ): Promise<ChatMessage> {
     const message: ChatMessage = {
       ...input,
       id: randomUUID(),
@@ -36,7 +38,10 @@ export class ChatHistoryStore {
     return message;
   }
 
-  async getConversation(conversationId: ConversationId, limit = 50): Promise<ChatMessage[]> {
+  async getConversation(
+    conversationId: ConversationId,
+    limit = 50,
+  ): Promise<ChatMessage[]> {
     const state = await this.readState();
     const items = state.messages
       .filter((m) => m.conversationId === conversationId)
@@ -45,7 +50,9 @@ export class ChatHistoryStore {
     return items.slice(Math.max(0, items.length - limit));
   }
 
-  private async enqueueWrite(mutator: (state: StoreShape) => Promise<void> | void): Promise<void> {
+  private async enqueueWrite(
+    mutator: (state: StoreShape) => Promise<void> | void,
+  ): Promise<void> {
     this.writeChain = this.writeChain.then(async () => {
       const state = await this.readState();
       await mutator(state);
@@ -61,7 +68,9 @@ export class ChatHistoryStore {
     try {
       const raw = await fs.readFile(this.storePath, 'utf-8');
       const parsed = JSON.parse(raw) as Partial<StoreShape>;
-      return { messages: Array.isArray(parsed.messages) ? (parsed.messages as ChatMessage[]) : [] };
+      return {
+        messages: Array.isArray(parsed.messages) ? parsed.messages : [],
+      };
     } catch {
       return { messages: [] };
     }

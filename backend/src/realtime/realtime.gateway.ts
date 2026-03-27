@@ -8,7 +8,11 @@ import {
 import type { Server, Socket } from 'socket.io';
 import { JwtSocketAuthService } from './security/jwt-socket-auth.service';
 import { RealtimeService } from './realtime.service';
-import type { ConversationId, SocketUser, UserRole } from './types/realtime.types';
+import type {
+  ConversationId,
+  SocketUser,
+  UserRole,
+} from './types/realtime.types';
 
 type AuthedSocket = Socket & { user?: SocketUser };
 
@@ -60,7 +64,7 @@ export class RealtimeGateway {
   private getUser(socket: AuthedSocket): SocketUser {
     const token =
       (socket.handshake.auth?.token as string | undefined) ??
-      (socket.handshake.headers?.authorization as string | undefined);
+      socket.handshake.headers?.authorization;
 
     const user = this.auth.authenticate(token);
     if (!user) {
@@ -84,7 +88,10 @@ export class RealtimeGateway {
       throw new Error('FORBIDDEN');
     }
 
-    const conversationId = this.realtime.getConversationId(mentorId, etudiantId);
+    const conversationId = this.realtime.getConversationId(
+      mentorId,
+      etudiantId,
+    );
 
     await socket.join(conversationId);
 
@@ -100,9 +107,11 @@ export class RealtimeGateway {
     @MessageBody() payload: SendMessagePayload,
   ) {
     const user = this.getUser(socket);
-    const { conversationId, toUserId, toRole, text } = payload ?? ({} as SendMessagePayload);
+    const { conversationId, toUserId, toRole, text } =
+      payload ?? ({} as SendMessagePayload);
 
-    if (!conversationId || !toUserId || !toRole) throw new Error('INVALID_PAYLOAD');
+    if (!conversationId || !toUserId || !toRole)
+      throw new Error('INVALID_PAYLOAD');
 
     // pairing rule: must already be in room to send
     if (!socket.rooms.has(conversationId)) {
@@ -131,17 +140,28 @@ export class RealtimeGateway {
     const { mentorId, etudiantId } = payload ?? ({} as StartCallPayload);
     if (!mentorId || !etudiantId) throw new Error('INVALID_PAYLOAD');
 
-    const conversationId = this.realtime.getConversationId(mentorId, etudiantId);
+    const conversationId = this.realtime.getConversationId(
+      mentorId,
+      etudiantId,
+    );
     if (!socket.rooms.has(conversationId)) throw new Error('FORBIDDEN');
 
-    const call = this.realtime.startCall(conversationId, mentorId, etudiantId, user);
+    const call = this.realtime.startCall(
+      conversationId,
+      mentorId,
+      etudiantId,
+      user,
+    );
     this.server.to(conversationId).emit('call.ringing', call);
 
     return call;
   }
 
   @SubscribeMessage('call.connected')
-  async callConnected(@ConnectedSocket() socket: AuthedSocket, @MessageBody() payload: { conversationId: ConversationId }) {
+  async callConnected(
+    @ConnectedSocket() socket: AuthedSocket,
+    @MessageBody() payload: { conversationId: ConversationId },
+  ) {
     this.getUser(socket);
     if (!payload?.conversationId) throw new Error('INVALID_PAYLOAD');
     if (!socket.rooms.has(payload.conversationId)) throw new Error('FORBIDDEN');
@@ -154,13 +174,17 @@ export class RealtimeGateway {
   @SubscribeMessage('call.end')
   async callEnd(
     @ConnectedSocket() socket: AuthedSocket,
-    @MessageBody() payload: { conversationId: ConversationId; reason?: 'ended' | 'missed' },
+    @MessageBody()
+    payload: { conversationId: ConversationId; reason?: 'ended' | 'missed' },
   ) {
     this.getUser(socket);
     if (!payload?.conversationId) throw new Error('INVALID_PAYLOAD');
     if (!socket.rooms.has(payload.conversationId)) throw new Error('FORBIDDEN');
 
-    const call = this.realtime.markEnded(payload.conversationId, payload.reason ?? 'ended');
+    const call = this.realtime.markEnded(
+      payload.conversationId,
+      payload.reason ?? 'ended',
+    );
     this.server.to(payload.conversationId).emit('call.ended', call);
     return call;
   }

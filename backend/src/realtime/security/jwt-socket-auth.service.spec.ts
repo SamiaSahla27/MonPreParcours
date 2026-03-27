@@ -8,13 +8,17 @@ describe(JwtSocketAuthService.name, () => {
   });
 
   it('accepts valid token with sub and role', () => {
-    const jwt = { verify: jest.fn().mockReturnValue({ sub: 'u1', role: 'mentor' }) } as any;
+    const jwt = {
+      verify: jest.fn().mockReturnValue({ sub: 'u1', role: 'mentor' }),
+    } as any;
     const svc = new JwtSocketAuthService(jwt);
     expect(svc.authenticate('token')).toEqual({ userId: 'u1', role: 'mentor' });
   });
 
   it('rejects token with invalid role', () => {
-    const jwt = { verify: jest.fn().mockReturnValue({ sub: 'u1', role: 'admin' }) } as any;
+    const jwt = {
+      verify: jest.fn().mockReturnValue({ sub: 'u1', role: 'admin' }),
+    } as any;
     const svc = new JwtSocketAuthService(jwt);
     expect(svc.authenticate('token')).toBeNull();
   });

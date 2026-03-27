@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../db/prisma.service';
@@ -11,12 +15,13 @@ export class AuthService {
     private readonly jwt: JwtService,
   ) {}
 
-
   async register(params: { email: string; password: string; role: UserRole }) {
     const email = params.email?.trim().toLowerCase();
     if (!email) throw new BadRequestException('EMAIL_REQUIRED');
-    if (!params.password || params.password.length < 8) throw new BadRequestException('PASSWORD_TOO_SHORT');
-    if (params.role !== 'mentor' && params.role !== 'etudiant') throw new BadRequestException('ROLE_INVALID');
+    if (!params.password || params.password.length < 8)
+      throw new BadRequestException('PASSWORD_TOO_SHORT');
+    if (params.role !== 'mentor' && params.role !== 'etudiant')
+      throw new BadRequestException('ROLE_INVALID');
 
     const existing = await this.prisma.user.findUnique({ where: { email } });
     if (existing) throw new BadRequestException('EMAIL_ALREADY_USED');
@@ -32,7 +37,11 @@ export class AuthService {
       select: { id: true, email: true, role: true, createdAt: true },
     });
 
-    const token = await this.signToken({ sub: user.id, role: user.role, email: user.email });
+    const token = await this.signToken({
+      sub: user.id,
+      role: user.role,
+      email: user.email,
+    });
     return { user, token };
   }
 
@@ -46,10 +55,19 @@ export class AuthService {
     const ok = await bcrypt.compare(params.password ?? '', user.passwordHash);
     if (!ok) throw new UnauthorizedException('INVALID_CREDENTIALS');
 
-    const token = await this.signToken({ sub: user.id, role: user.role as any, email: user.email });
+    const token = await this.signToken({
+      sub: user.id,
+      role: user.role as any,
+      email: user.email,
+    });
 
     return {
-      user: { id: user.id, email: user.email, role: user.role, createdAt: user.createdAt },
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        createdAt: user.createdAt,
+      },
       token,
     };
   }

@@ -8,7 +8,9 @@ export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   @Post('register')
-  async register(@Body() body: { email: string; password: string; role: UserRole }) {
+  async register(
+    @Body() body: { email: string; password: string; role: UserRole },
+  ) {
     return await this.auth.register(body);
   }
 

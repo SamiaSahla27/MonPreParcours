@@ -19,14 +19,18 @@ describe(AuthService.name, () => {
     const svc = new AuthService(prismaMock as any, jwt);
 
     prismaMock.user.findUnique.mockResolvedValue(null);
-    prismaMock.user.create.mockImplementation(async ({ data, select }: any) => ({
+    prismaMock.user.create.mockImplementation(async ({ data }: any) => ({
       id: 'u1',
       email: data.email,
       role: data.role,
       createdAt: new Date(),
     }));
 
-    const res = await svc.register({ email: 'test@example.com', password: 'password123', role: 'mentor' });
+    const res = await svc.register({
+      email: 'test@example.com',
+      password: 'password123',
+      role: 'mentor',
+    });
     expect(res.user.email).toBe('test@example.com');
     expect(typeof res.token).toBe('string');
   });
@@ -36,8 +40,16 @@ describe(AuthService.name, () => {
     const svc = new AuthService(prismaMock as any, jwt);
 
     const hash = await bcrypt.hash('goodpass123', 10);
-    prismaMock.user.findUnique.mockResolvedValue({ id: 'u1', email: 'a@b.com', role: 'mentor', passwordHash: hash, createdAt: new Date() });
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: 'u1',
+      email: 'a@b.com',
+      role: 'mentor',
+      passwordHash: hash,
+      createdAt: new Date(),
+    });
 
-    await expect(svc.login({ email: 'a@b.com', password: 'bad' })).rejects.toBeDefined();
+    await expect(
+      svc.login({ email: 'a@b.com', password: 'bad' }),
+    ).rejects.toBeDefined();
   });
 });

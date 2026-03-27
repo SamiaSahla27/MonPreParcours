@@ -1,6 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../db/prisma.service';
-import type { ChatMessage, ConversationId, SocketUser, UserRole } from '../types/realtime.types';
+import type {
+  ChatMessage,
+  ConversationId,
+  SocketUser,
+  UserRole,
+} from '../types/realtime.types';
 
 @Injectable()
 export class ChatMessageStore {
@@ -15,7 +20,10 @@ export class ChatMessageStore {
     });
   }
 
-  async listRecentMessages(conversationId: ConversationId, limit = 50): Promise<ChatMessage[]> {
+  async listRecentMessages(
+    conversationId: ConversationId,
+    limit = 50,
+  ): Promise<ChatMessage[]> {
     // conversationId is our room id ("mentor:{id}|etudiant:{id}")
     const ids = this.parseRoomConversationId(conversationId);
     const convo = await this.prisma.conversation.findUnique({
@@ -28,7 +36,13 @@ export class ChatMessageStore {
       where: { conversationId: convo.id },
       orderBy: { createdAt: 'asc' },
       take: Math.max(1, Math.min(limit, 200)),
-      select: { id: true, fromUserId: true, toUserId: true, text: true, createdAt: true },
+      select: {
+        id: true,
+        fromUserId: true,
+        toUserId: true,
+        text: true,
+        createdAt: true,
+      },
     });
 
     return rows.map((m) => ({
@@ -62,7 +76,13 @@ export class ChatMessageStore {
         toUserId,
         text,
       },
-      select: { id: true, fromUserId: true, toUserId: true, text: true, createdAt: true },
+      select: {
+        id: true,
+        fromUserId: true,
+        toUserId: true,
+        text: true,
+        createdAt: true,
+      },
     });
 
     return {
@@ -77,7 +97,10 @@ export class ChatMessageStore {
     };
   }
 
-  private parseRoomConversationId(conversationId: ConversationId): { mentorId: string; etudiantId: string } {
+  private parseRoomConversationId(conversationId: ConversationId): {
+    mentorId: string;
+    etudiantId: string;
+  } {
     // Expected format: mentor:{mentorId}|etudiant:{etudiantId}
     const match = /^mentor:(.+)\|etudiant:(.+)$/.exec(conversationId);
     if (!match) {

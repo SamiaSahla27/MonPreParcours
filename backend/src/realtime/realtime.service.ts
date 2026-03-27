@@ -1,15 +1,17 @@
 import { Injectable } from '@nestjs/common';
-import type { CallSession, ConversationId, SocketUser, UserRole } from './types/realtime.types';
+import type {
+  CallSession,
+  ConversationId,
+  SocketUser,
+  UserRole,
+} from './types/realtime.types';
 import { ChatMessageStore } from './store/chat-message.store';
 
-function conversationIdFor(mentorId: string, etudiantId: string): ConversationId {
+function conversationIdFor(
+  mentorId: string,
+  etudiantId: string,
+): ConversationId {
   return `mentor:${mentorId}|etudiant:${etudiantId}`;
-}
-
-function assertRole(user: SocketUser, role: UserRole): void {
-  if (user.role !== role) {
-    throw new Error('FORBIDDEN_ROLE');
-  }
 }
 
 @Injectable()
@@ -24,7 +26,11 @@ export class RealtimeService {
 
   // Option B pairing rule: require explicit mentor+etudiant IDs in join.
   // We trust pairing exists (out of scope); server enforces roles.
-  canJoinConversation(user: SocketUser, mentorId: string, etudiantId: string): boolean {
+  canJoinConversation(
+    user: SocketUser,
+    mentorId: string,
+    etudiantId: string,
+  ): boolean {
     if (user.role === 'mentor') return user.userId === mentorId;
     if (user.role === 'etudiant') return user.userId === etudiantId;
     return false;
@@ -45,10 +51,21 @@ export class RealtimeService {
 
     if (!text || !text.trim()) throw new Error('INVALID_TEXT');
 
-    return this.store.appendMessage({ conversationId, from, toUserId, toRole, text: text.trim() });
+    return this.store.appendMessage({
+      conversationId,
+      from,
+      toUserId,
+      toRole,
+      text: text.trim(),
+    });
   }
 
-  startCall(conversationId: ConversationId, mentorId: string, etudiantId: string, requestedBy: SocketUser) {
+  startCall(
+    conversationId: ConversationId,
+    mentorId: string,
+    etudiantId: string,
+    requestedBy: SocketUser,
+  ) {
     // both roles can start; but must belong to conversation
     if (requestedBy.userId !== mentorId && requestedBy.userId !== etudiantId) {
       throw new Error('FORBIDDEN');
