@@ -21,6 +21,15 @@ interface JoinConversationPayload {
   etudiantId: string;
 }
 
+interface MentorNotificationPayload {
+  conversationId: ConversationId;
+  mentorId: string;
+  etudiantId: string;
+  type: 'contact' | 'message' | 'call';
+  previewText?: string;
+  createdAt: string;
+}
+
 interface SendMessagePayload {
   conversationId: ConversationId;
   toUserId: string;
@@ -31,6 +40,10 @@ interface SendMessagePayload {
 interface StartCallPayload {
   mentorId: string;
   etudiantId: string;
+}
+
+interface AcceptCallPayload {
+  conversationId: ConversationId;
 }
 
 interface SignalPayload {
@@ -95,8 +108,29 @@ export class RealtimeGateway {
 
     await socket.join(conversationId);
 
+    // Safety net: ensure user is also in their personal room (userId)
+    // so they can receive direct events even outside the conversation room.
+    await socket.join(user.userId);
+
     const messages = await this.realtime.listRecentMessages(conversationId);
     socket.emit('conversation.history', { conversationId, messages });
+
+    // Mentor notifications (real-time only): when an étudiant initiates contact
+    // by joining the conversation, notify the mentor via their userId room.
+    if (user.role === 'etudiant') {
+      const notif: MentorNotificationPayload = {
+        conversationId,
+        mentorId,
+        etudiantId,
+        type: 'contact',
+        createdAt: new Date().toISOString(),
+      };
+      // eslint-disable-next-line no-console
+      console.log('[realtime] mentor.notification emit', { to: mentorId, type: notif.type, conversationId });
+      this.server.to(mentorId).emit('mentor.notification', notif);
+      // Also emit to the conversation room so mentors already in the chat always receive it.
+      this.server.to(conversationId).emit('mentor.notification', notif);
+    }
 
     return { conversationId };
   }
@@ -128,6 +162,31 @@ export class RealtimeGateway {
 
     this.server.to(conversationId).emit('chat.message', msg);
 
+    // Mentor notifications (real-time only): if an étudiant sends a message,
+    // notify the mentor via their userId room.
+    if (user.role === 'etudiant') {
+      const conversationParts = conversationId.split('|');
+      const mentorPart = conversationParts.find((p) => p.startsWith('mentor:'));
+      const etudiantPart = conversationParts.find((p) => p.startsWith('etudiant:'));
+      const mentorId = mentorPart?.slice('mentor:'.length);
+      const etudiantId = etudiantPart?.slice('etudiant:'.length);
+
+      if (mentorId && etudiantId) {
+        const notif: MentorNotificationPayload = {
+          conversationId,
+          mentorId,
+          etudiantId,
+          type: 'message',
+          previewText: text?.trim?.() ? text.trim().slice(0, 120) : undefined,
+          createdAt: new Date().toISOString(),
+        };
+        // eslint-disable-next-line no-console
+        console.log('[realtime] mentor.notification emit', { to: mentorId, type: notif.type, conversationId });
+        this.server.to(mentorId).emit('mentor.notification', notif);
+        this.server.to(conversationId).emit('mentor.notification', notif);
+      }
+    }
+
     return msg;
   }
 
@@ -154,6 +213,22 @@ export class RealtimeGateway {
     );
     this.server.to(conversationId).emit('call.ringing', call);
 
+    // Mentor notifications (real-time only): if an étudiant initiates a call,
+    // notify the mentor via their userId room.
+    if (user.role === 'etudiant') {
+      const notif: MentorNotificationPayload = {
+        conversationId,
+        mentorId,
+        etudiantId,
+        type: 'call',
+        createdAt: new Date().toISOString(),
+      };
+      // eslint-disable-next-line no-console
+      console.log('[realtime] mentor.notification emit', { to: mentorId, type: notif.type, conversationId });
+      this.server.to(mentorId).emit('mentor.notification', notif);
+      this.server.to(conversationId).emit('mentor.notification', notif);
+    }
+
     return call;
   }
 
@@ -169,6 +244,23 @@ export class RealtimeGateway {
     const call = this.realtime.markConnected(payload.conversationId);
     this.server.to(payload.conversationId).emit('call.connected', call);
     return call;
+  }
+
+  @SubscribeMessage('call.accept')
+  async callAccept(
+    @ConnectedSocket() socket: AuthedSocket,
+    @MessageBody() payload: AcceptCallPayload,
+  ) {
+    this.getUser(socket);
+    if (!payload?.conversationId) throw new Error('INVALID_PAYLOAD');
+    if (!socket.rooms.has(payload.conversationId)) throw new Error('FORBIDDEN');
+
+    // Relay to conversation room so caller can renegotiate if needed.
+    this.server.to(payload.conversationId).emit('call.accepted', {
+      conversationId: payload.conversationId,
+    });
+
+    return { ok: true };
   }
 
   @SubscribeMessage('call.end')
@@ -214,6 +306,9 @@ export class RealtimeGateway {
   async presenceRegister(@ConnectedSocket() socket: AuthedSocket) {
     const user = this.getUser(socket);
     await socket.join(user.userId);
+    // Debug: confirm room join (can be removed later)
+    // eslint-disable-next-line no-console
+    console.log('[realtime] presence.register', { userId: user.userId, role: user.role, socketId: socket.id });
     return { ok: true };
   }
 }

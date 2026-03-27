@@ -22,6 +22,10 @@ services:
       PORT: 3000
       DATABASE_URL: postgresql://app:app@db:5432/monpreparcours?schema=public
       JWT_SECRET: dev-secret-change-me
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: "300"
+      WATCHPACK_POLLING: "true"
+      WATCHPACK_POLLING_INTERVAL: "300"
     ports:
       - "3000:3000"
     depends_on:
@@ -30,21 +34,25 @@ services:
     volumes:
       - ./backend:/app
       - backend_node_modules:/app/node_modules
-    command: sh -lc "npm i && npm run start:dev"
+    command: sh -lc "npm ci || npm i && npm run start:dev"
 
   front:
     image: node:22-alpine
     working_dir: /app
     environment:
-      VITE_BACKEND_URL: http://localhost:3000
+      # Prefer same-origin in the browser (defaults to /api in code).
+      # If you set VITE_BACKEND_URL explicitly, it should be reachable by the browser.
+      VITE_BACKEND_URL: /api
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: "300"
     ports:
-      - "5173:5173"
+      - "8080:8080"
     depends_on:
       - backend
     volumes:
       - ./Front:/app
       - front_node_modules:/app/node_modules
-    command: sh -lc "npm i && npm run dev -- --host 0.0.0.0 --port 5173"
+    command: sh -lc "npm ci || npm i && npm run dev -- --host 0.0.0.0 --port 8080"
 
 volumes:
   pgdata:
