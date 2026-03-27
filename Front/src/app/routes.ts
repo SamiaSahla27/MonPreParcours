@@ -3,8 +3,13 @@ import { Root } from "./Root";
 import { PortalHome } from "./pages/PortalHome";
 import { CardDetail } from "./pages/CardDetail";
 import { SearchResults } from "./pages/SearchResults";
+import { OrientationIASession } from "./pages/OrientationIASession";
 
 export const router = createBrowserRouter([
+  {
+    path: "/orientation-ia",
+    Component: OrientationIASession,
+  },
   {
     path: "/",
     Component: Root,
