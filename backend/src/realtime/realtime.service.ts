@@ -50,12 +50,16 @@ export class RealtimeService {
     });
 
     if (!isParticipant) {
-      console.warn('[RealtimeService.canJoinConversation] User is not a participant');
+      console.warn(
+        '[RealtimeService.canJoinConversation] User is not a participant',
+      );
       return false;
     }
 
     // Check if conversation already exists
-    console.log('[RealtimeService.canJoinConversation] Checking conversation table...');
+    console.log(
+      '[RealtimeService.canJoinConversation] Checking conversation table...',
+    );
     const conversation = await this.prisma.conversation.findUnique({
       where: { mentorId_etudiantId: { mentorId, etudiantId } },
       select: { id: true },
@@ -67,7 +71,9 @@ export class RealtimeService {
     }
 
     // Fallback: check for accepted request (in case join happens immediately)
-    console.log('[RealtimeService.canJoinConversation] Checking MentorContactRequest table...');
+    console.log(
+      '[RealtimeService.canJoinConversation] Checking MentorContactRequest table...',
+    );
     const acceptedRequest = await this.prisma.mentorContactRequest.findFirst({
       where: {
         mentorId,
@@ -78,10 +84,13 @@ export class RealtimeService {
     });
 
     const hasAccess = Boolean(acceptedRequest);
-    console.log('[RealtimeService.canJoinConversation] MentorContactRequest check result:', {
-      hasAccess,
-      requestId: acceptedRequest?.id,
-    });
+    console.log(
+      '[RealtimeService.canJoinConversation] MentorContactRequest check result:',
+      {
+        hasAccess,
+        requestId: acceptedRequest?.id,
+      },
+    );
 
     return hasAccess;
   }

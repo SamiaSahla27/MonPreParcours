@@ -2,20 +2,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { MentorRequestsService } from './mentor-requests.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../db/prisma.service';
-import {
-  BadRequestException,
-  ForbiddenException,
-  NotFoundException,
-} from '@nestjs/common';
-import {
-  MentorContactRequestStatus,
-  AppNotificationType,
-} from '@prisma/client';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { MentorContactRequestStatus } from '@prisma/client';
 
 describe('MentorRequestsService', () => {
   let service: MentorRequestsService;
-  let prisma: PrismaService;
-  let notifications: NotificationsService;
 
   const mockPrisma = {
     user: {
@@ -56,8 +47,6 @@ describe('MentorRequestsService', () => {
     }).compile();
 
     service = module.get<MentorRequestsService>(MentorRequestsService);
-    prisma = module.get<PrismaService>(PrismaService);
-    notifications = module.get<NotificationsService>(NotificationsService);
   });
 
   describe('createRequest', () => {
@@ -123,7 +112,9 @@ describe('MentorRequestsService', () => {
         etudiant: { email: 'etudiant@example.com' },
       };
 
-      mockPrisma.mentorContactRequest.findFirst.mockResolvedValueOnce(existingRequest);
+      mockPrisma.mentorContactRequest.findFirst.mockResolvedValueOnce(
+        existingRequest,
+      );
 
       const result = await service.createRequest(etudiantId, { mentorId });
 
@@ -144,7 +135,7 @@ describe('MentorRequestsService', () => {
         service.createRequest(mentorId, { mentorId: 'other' }),
       ).rejects.toThrow(ForbiddenException);
     });
-  });;
+  });
 
   describe('listIncomingPending', () => {
     it('should list pending requests for mentor', async () => {
@@ -242,7 +233,9 @@ describe('MentorRequestsService', () => {
         id: 'notif123',
       });
 
-      mockNotifications.clearRequestNotifications.mockResolvedValueOnce(undefined);
+      mockNotifications.clearRequestNotifications.mockResolvedValueOnce(
+        undefined,
+      );
 
       const result = await service.decide(mentorId, requestId, 'accepted');
 
@@ -285,7 +278,9 @@ describe('MentorRequestsService', () => {
         id: 'notif123',
       });
 
-      mockNotifications.clearRequestNotifications.mockResolvedValueOnce(undefined);
+      mockNotifications.clearRequestNotifications.mockResolvedValueOnce(
+        undefined,
+      );
 
       const result = await service.decide(mentorId, requestId, 'refused');
 
@@ -303,9 +298,9 @@ describe('MentorRequestsService', () => {
 
       mockPrisma.mentorContactRequest.findUnique.mockResolvedValueOnce(null);
 
-      await expect(service.decide(mentorId, 'nonexistent', 'accepted')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.decide(mentorId, 'nonexistent', 'accepted'),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('should reject if not the mentor', async () => {
@@ -330,9 +325,9 @@ describe('MentorRequestsService', () => {
 
       mockPrisma.mentorContactRequest.findUnique.mockResolvedValueOnce(request);
 
-      await expect(service.decide('mentor123', requestId, 'accepted')).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(
+        service.decide('mentor123', requestId, 'accepted'),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 });

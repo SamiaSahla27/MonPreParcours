@@ -55,11 +55,13 @@ describe('MentorRequestsController', () => {
         updatedAt: new Date(),
       };
 
-      jest.spyOn(service, 'createRequest').mockResolvedValue(mockResult as any);
+      const createRequestSpy = jest
+        .spyOn(service, 'createRequest')
+        .mockResolvedValue(mockResult as any);
 
       const result = await controller.create(mockRequest, dto);
 
-      expect(service.createRequest).toHaveBeenCalledWith('etudiant123', dto);
+      expect(createRequestSpy).toHaveBeenCalledWith('etudiant123', dto);
       expect(result.id).toBe('req123');
     });
   });
@@ -89,11 +91,13 @@ describe('MentorRequestsController', () => {
         },
       ];
 
-      jest.spyOn(service, 'listIncomingPending').mockResolvedValue(mockRequests as any);
+      const listIncomingPendingSpy = jest
+        .spyOn(service, 'listIncomingPending')
+        .mockResolvedValue(mockRequests as any);
 
       const result = await controller.incoming(mockRequest);
 
-      expect(service.listIncomingPending).toHaveBeenCalledWith('mentor123');
+      expect(listIncomingPendingSpy).toHaveBeenCalledWith('mentor123');
       expect(result).toHaveLength(2);
     });
   });
@@ -104,13 +108,21 @@ describe('MentorRequestsController', () => {
         user: { sub: 'mentor123', role: 'mentor' },
       } as any;
 
-      const mockResult = { id: 'req123', status: 'accepted', alreadyAnswered: false };
+      const mockResult = {
+        id: 'req123',
+        status: 'accepted',
+        alreadyAnswered: false,
+      };
 
-      jest.spyOn(service, 'decide').mockResolvedValue(mockResult as any);
+      const decideSpy = jest
+        .spyOn(service, 'decide')
+        .mockResolvedValue(mockResult as any);
 
-      const result = await controller.decision(mockRequest, 'req123', { decision: 'accepted' });
+      const result = await controller.decision(mockRequest, 'req123', {
+        decision: 'accepted',
+      });
 
-      expect(service.decide).toHaveBeenCalledWith('mentor123', 'req123', 'accepted');
+      expect(decideSpy).toHaveBeenCalledWith('mentor123', 'req123', 'accepted');
       expect(result.status).toBe('accepted');
     });
   });

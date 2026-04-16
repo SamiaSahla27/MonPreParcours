@@ -60,7 +60,9 @@ interface SignalPayload {
   cors: { origin: true, credentials: true },
   namespace: '/realtime',
 })
-export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
+export class RealtimeGateway
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
+{
   @WebSocketServer()
   server!: Server;
 
@@ -95,17 +97,20 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
 
     const user = this.auth.authenticate(token);
     if (!user) {
-      console.error('[RealtimeGateway.getUser] Authentication failed for token:', {
-        tokenLength: token?.length || 0,
-      });
+      console.error(
+        '[RealtimeGateway.getUser] Authentication failed for token:',
+        {
+          tokenLength: token?.length || 0,
+        },
+      );
       throw new Error('UNAUTHORIZED');
     }
-    
+
     console.log('[RealtimeGateway.getUser] User authenticated', {
       userId: user.userId,
       role: user.role,
     });
-    
+
     socket.user = user;
     return user;
   }
@@ -115,21 +120,41 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
     @ConnectedSocket() socket: AuthedSocket,
     @MessageBody() payload: JoinConversationPayload,
   ) {
-    console.log('[RealtimeGateway] joinConversation called with payload:', payload);
-    
+    console.log(
+      '[RealtimeGateway] joinConversation called with payload:',
+      payload,
+    );
+
     const user = this.getUser(socket);
-    console.log('[RealtimeGateway] User from socket:', { userId: user.userId, role: user.role });
+    console.log('[RealtimeGateway] User from socket:', {
+      userId: user.userId,
+      role: user.role,
+    });
 
     const { mentorId, etudiantId } = payload ?? ({} as JoinConversationPayload);
     if (!mentorId || !etudiantId) {
-      console.error('[RealtimeGateway] Missing mentorId or etudiantId', { mentorId, etudiantId });
+      console.error('[RealtimeGateway] Missing mentorId or etudiantId', {
+        mentorId,
+        etudiantId,
+      });
       throw new Error('INVALID_PAYLOAD');
     }
 
-    console.log('[RealtimeGateway] Checking access control for', { mentorId, etudiantId });
-    const hasAccess = await this.realtime.canJoinConversation(user, mentorId, etudiantId);
+    console.log('[RealtimeGateway] Checking access control for', {
+      mentorId,
+      etudiantId,
+    });
+    const hasAccess = await this.realtime.canJoinConversation(
+      user,
+      mentorId,
+      etudiantId,
+    );
     if (!hasAccess) {
-      console.warn('[RealtimeGateway] Access denied for user', { userId: user.userId, mentorId, etudiantId });
+      console.warn('[RealtimeGateway] Access denied for user', {
+        userId: user.userId,
+        mentorId,
+        etudiantId,
+      });
       throw new Error('FORBIDDEN');
     }
 
@@ -137,17 +162,25 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
       mentorId,
       etudiantId,
     );
-    console.log('[RealtimeGateway] Access granted, joining room', { conversationId });
+    console.log('[RealtimeGateway] Access granted, joining room', {
+      conversationId,
+    });
 
     await socket.join(conversationId);
 
     // Safety net: ensure user is also in their personal room (userId)
     // so they can receive direct events even outside the conversation room.
     await socket.join(user.userId);
-    console.log('[RealtimeGateway] Socket joined to rooms', { conversationId, userId: user.userId });
+    console.log('[RealtimeGateway] Socket joined to rooms', {
+      conversationId,
+      userId: user.userId,
+    });
 
     const messages = await this.realtime.listRecentMessages(conversationId);
-    console.log('[RealtimeGateway] Fetched recent messages count:', messages.length);
+    console.log(
+      '[RealtimeGateway] Fetched recent messages count:',
+      messages.length,
+    );
     socket.emit('conversation.history', { conversationId, messages });
 
     console.log('[RealtimeGateway] joinConversation completed successfully');
@@ -186,7 +219,9 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
     if (user.role === 'etudiant') {
       const conversationParts = conversationId.split('|');
       const mentorPart = conversationParts.find((p) => p.startsWith('mentor:'));
-      const etudiantPart = conversationParts.find((p) => p.startsWith('etudiant:'));
+      const etudiantPart = conversationParts.find((p) =>
+        p.startsWith('etudiant:'),
+      );
       const mentorId = mentorPart?.slice('mentor:'.length);
       const etudiantId = etudiantPart?.slice('etudiant:'.length);
 
@@ -199,8 +234,12 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
           previewText: text?.trim?.() ? text.trim().slice(0, 120) : undefined,
           createdAt: new Date().toISOString(),
         };
-        // eslint-disable-next-line no-console
-        console.log('[realtime] mentor.notification emit', { to: mentorId, type: notif.type, conversationId });
+
+        console.log('[realtime] mentor.notification emit', {
+          to: mentorId,
+          type: notif.type,
+          conversationId,
+        });
         this.server.to(mentorId).emit('mentor.notification', notif);
         this.server.to(conversationId).emit('mentor.notification', notif);
       }
@@ -242,8 +281,12 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
         type: 'call',
         createdAt: new Date().toISOString(),
       };
-      // eslint-disable-next-line no-console
-      console.log('[realtime] mentor.notification emit', { to: mentorId, type: notif.type, conversationId });
+
+      console.log('[realtime] mentor.notification emit', {
+        to: mentorId,
+        type: notif.type,
+        conversationId,
+      });
       this.server.to(mentorId).emit('mentor.notification', notif);
       this.server.to(conversationId).emit('mentor.notification', notif);
     }
@@ -326,21 +369,25 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
     const user = this.getUser(socket);
     await socket.join(user.userId);
     // Debug: confirm room join (can be removed later)
-    // eslint-disable-next-line no-console
-    console.log('[realtime] presence.register', { userId: user.userId, role: user.role, socketId: socket.id });
+
+    console.log('[realtime] presence.register', {
+      userId: user.userId,
+      role: user.role,
+      socketId: socket.id,
+    });
     return { ok: true };
   }
 
-  handleConnection(socket: AuthedSocket, ...args: any[]) {
+  handleConnection(socket: AuthedSocket) {
     console.log('[RealtimeGateway] Socket connected', {
       socketId: socket.id,
       remoteAddress: socket.handshake.address,
     });
-    
+
     try {
       const token = socket.handshake.auth?.token as string | undefined;
       console.log('[RealtimeGateway.handleConnection] Token present:', !!token);
-      
+
       const user = this.getUser(socket);
       console.log('[RealtimeGateway.handleConnection] Socket authenticated', {
         socketId: socket.id,
@@ -348,10 +395,13 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
         role: user.role,
       });
     } catch (error) {
-      console.error('[RealtimeGateway.handleConnection] Failed to authenticate', {
-        socketId: socket.id,
-        error: error instanceof Error ? error.message : String(error),
-      });
+      console.error(
+        '[RealtimeGateway.handleConnection] Failed to authenticate',
+        {
+          socketId: socket.id,
+          error: error instanceof Error ? error.message : String(error),
+        },
+      );
       // Note: The socket will still be connected, but not in user.userId room
       // Future events will fail the getUser() check
     }

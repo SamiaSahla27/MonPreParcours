@@ -7,7 +7,10 @@ import {
 import { PrismaService } from '../db/prisma.service';
 import { RealtimeEventsService } from '../realtime/realtime-events.service';
 
-function buildConversationId(mentorId?: string | null, etudiantId?: string | null) {
+function buildConversationId(
+  mentorId?: string | null,
+  etudiantId?: string | null,
+) {
   if (!mentorId || !etudiantId) return null;
   return `mentor:${mentorId}|etudiant:${etudiantId}`;
 }
@@ -73,7 +76,11 @@ export class NotificationsService {
       ...(params.realtimePayload ?? {}),
     };
 
-    this.realtimeEvents.emitToUser(created.userId, 'notification.created', payload);
+    this.realtimeEvents.emitToUser(
+      created.userId,
+      'notification.created',
+      payload,
+    );
 
     return payload;
   }

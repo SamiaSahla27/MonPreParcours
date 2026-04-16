@@ -140,7 +140,6 @@ export function Mentorat() {
           setCallAccepted(true);
 
           peer.onTrack = (remoteStream) => {
-            // eslint-disable-next-line no-console
             console.log("[webrtc] onTrack", remoteStream.getTracks().map((t) => `${t.kind}:${t.readyState}`));
             setRemoteStreamSeen(true);
             if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStream;
@@ -152,7 +151,6 @@ export function Mentorat() {
           };
 
           if (stream) peer.addLocalStream(stream);
-          // eslint-disable-next-line no-console
           console.log("[webrtc] local tracks", stream ? stream.getTracks().map((t) => `${t.kind}:${t.readyState}`) : []);
         }
 
@@ -205,7 +203,6 @@ export function Mentorat() {
     setCallAccepted(true);
 
     peer.onTrack = (remoteStream) => {
-      // eslint-disable-next-line no-console
       console.log("[webrtc] onTrack", remoteStream.getTracks().map((t) => `${t.kind}:${t.readyState}`));
       setRemoteStreamSeen(true);
       if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStream;
@@ -217,7 +214,6 @@ export function Mentorat() {
     };
 
     if (stream) peer.addLocalStream(stream);
-    // eslint-disable-next-line no-console
     console.log("[webrtc] local tracks", stream ? stream.getTracks().map((t) => `${t.kind}:${t.readyState}`) : []);
 
     await client.acceptCall({ conversationId });
@@ -253,7 +249,6 @@ export function Mentorat() {
     setCallAccepted(true);
 
     peer.onTrack = (remoteStream) => {
-      // eslint-disable-next-line no-console
       console.log("[webrtc] onTrack", remoteStream.getTracks().map((t) => `${t.kind}:${t.readyState}`));
       setRemoteStreamSeen(true);
       if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStream;
@@ -265,7 +260,6 @@ export function Mentorat() {
     };
 
     if (stream) peer.addLocalStream(stream);
-    // eslint-disable-next-line no-console
     console.log("[webrtc] local tracks", stream ? stream.getTracks().map((t) => `${t.kind}:${t.readyState}`) : []);
 
     await client.startCall({ mentorId, etudiantId });

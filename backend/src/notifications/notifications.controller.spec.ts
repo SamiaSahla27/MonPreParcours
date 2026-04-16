@@ -70,11 +70,13 @@ describe('NotificationsController', () => {
         },
       ];
 
-      jest.spyOn(service, 'listForUser').mockResolvedValue(mockNotifications as any);
+      const listForUserSpy = jest
+        .spyOn(service, 'listForUser')
+        .mockResolvedValue(mockNotifications as any);
 
       const result = await controller.list(mockRequest);
 
-      expect(service.listForUser).toHaveBeenCalledWith('user123');
+      expect(listForUserSpy).toHaveBeenCalledWith('user123');
       expect(result).toHaveLength(2);
     });
   });
@@ -85,11 +87,13 @@ describe('NotificationsController', () => {
         user: { sub: 'user123' },
       } as any;
 
-      jest.spyOn(service, 'deleteForUser').mockResolvedValue({ ok: true });
+      const deleteForUserSpy = jest
+        .spyOn(service, 'deleteForUser')
+        .mockResolvedValue({ ok: true });
 
       const result = await controller.delete(mockRequest, 'notif123');
 
-      expect(service.deleteForUser).toHaveBeenCalledWith('user123', 'notif123');
+      expect(deleteForUserSpy).toHaveBeenCalledWith('user123', 'notif123');
       expect(result).toEqual({ ok: true });
     });
   });
