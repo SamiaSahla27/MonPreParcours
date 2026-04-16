@@ -1,4 +1,8 @@
-import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
 import { PrismaService } from '../db/prisma.service';
 
 @Injectable()
@@ -95,7 +99,9 @@ export class ProfileService {
     if (!user) throw new ForbiddenException('FORBIDDEN');
     if (user.role !== 'mentor') throw new ForbiddenException('FORBIDDEN');
 
-    const existing = await this.prisma.mentorProfile.findUnique({ where: { userId } });
+    const existing = await this.prisma.mentorProfile.findUnique({
+      where: { userId },
+    });
     const profession = await this.upsertProfession(body.professionName);
 
     let locationId: string | null | undefined = undefined;
@@ -134,11 +140,14 @@ export class ProfileService {
             imageUrl: body.imageUrl?.trim() || null,
             emailPublic: body.emailPublic?.trim() || null,
             professionId:
-              profession?.id ?? (await this.prisma.profession.upsert({
-                where: { name: 'Mentor' },
-                update: {},
-                create: { name: 'Mentor' },
-              })).id,
+              profession?.id ??
+              (
+                await this.prisma.profession.upsert({
+                  where: { name: 'Mentor' },
+                  update: {},
+                  create: { name: 'Mentor' },
+                })
+              ).id,
             locationId: locationId ?? null,
           },
         });
@@ -155,9 +164,14 @@ export class ProfileService {
         ),
       );
 
-      await this.prisma.mentorSkill.deleteMany({ where: { mentorProfileId: profile.id } });
+      await this.prisma.mentorSkill.deleteMany({
+        where: { mentorProfileId: profile.id },
+      });
       await this.prisma.mentorSkill.createMany({
-        data: skillRecords.map((s) => ({ mentorProfileId: profile.id, skillId: s.id })),
+        data: skillRecords.map((s) => ({
+          mentorProfileId: profile.id,
+          skillId: s.id,
+        })),
         skipDuplicates: true,
       });
     }

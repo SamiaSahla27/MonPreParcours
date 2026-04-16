@@ -21,9 +21,25 @@ export class MentorsService {
           OR: [
             { fullName: { contains: query, mode: 'insensitive' as const } },
             { description: { contains: query, mode: 'insensitive' as const } },
-            { profession: { name: { contains: query, mode: 'insensitive' as const } } },
-            { skills: { some: { skill: { name: { contains: query, mode: 'insensitive' as const } } } } },
-            { location: { label: { contains: query, mode: 'insensitive' as const } } },
+            {
+              profession: {
+                name: { contains: query, mode: 'insensitive' as const },
+              },
+            },
+            {
+              skills: {
+                some: {
+                  skill: {
+                    name: { contains: query, mode: 'insensitive' as const },
+                  },
+                },
+              },
+            },
+            {
+              location: {
+                label: { contains: query, mode: 'insensitive' as const },
+              },
+            },
           ],
         }
       : {};

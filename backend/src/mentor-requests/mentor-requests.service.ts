@@ -41,10 +41,14 @@ export class MentorRequestsService {
     };
   }
 
-  async createRequest(etudiantId: string, params: { mentorId: string; message?: string }) {
+  async createRequest(
+    etudiantId: string,
+    params: { mentorId: string; message?: string },
+  ) {
     const mentorId = params.mentorId?.trim();
     if (!mentorId) throw new BadRequestException('MENTOR_ID_REQUIRED');
-    if (mentorId === etudiantId) throw new BadRequestException('INVALID_PAIRING');
+    if (mentorId === etudiantId)
+      throw new BadRequestException('INVALID_PAIRING');
 
     const [etudiant, mentor] = await Promise.all([
       this.prisma.user.findUnique({ where: { id: etudiantId } }),
@@ -106,8 +110,11 @@ export class MentorRequestsService {
   }
 
   async listIncomingPending(mentorId: string) {
-    const mentor = await this.prisma.user.findUnique({ where: { id: mentorId } });
-    if (!mentor || mentor.role !== 'mentor') throw new ForbiddenException('FORBIDDEN');
+    const mentor = await this.prisma.user.findUnique({
+      where: { id: mentorId },
+    });
+    if (!mentor || mentor.role !== 'mentor')
+      throw new ForbiddenException('FORBIDDEN');
 
     const requests = await this.prisma.mentorContactRequest.findMany({
       where: {
@@ -128,8 +135,11 @@ export class MentorRequestsService {
     requestId: string,
     decision: 'accepted' | 'refused',
   ) {
-    const mentor = await this.prisma.user.findUnique({ where: { id: mentorId } });
-    if (!mentor || mentor.role !== 'mentor') throw new ForbiddenException('FORBIDDEN');
+    const mentor = await this.prisma.user.findUnique({
+      where: { id: mentorId },
+    });
+    if (!mentor || mentor.role !== 'mentor')
+      throw new ForbiddenException('FORBIDDEN');
 
     const request = await this.prisma.mentorContactRequest.findUnique({
       where: { id: requestId },
@@ -139,7 +149,8 @@ export class MentorRequestsService {
     });
 
     if (!request) throw new NotFoundException('REQUEST_NOT_FOUND');
-    if (request.mentorId !== mentorId) throw new ForbiddenException('FORBIDDEN');
+    if (request.mentorId !== mentorId)
+      throw new ForbiddenException('FORBIDDEN');
 
     if (request.status !== MentorContactRequestStatus.pending) {
       return {

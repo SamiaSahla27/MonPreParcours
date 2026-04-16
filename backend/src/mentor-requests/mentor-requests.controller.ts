@@ -17,7 +17,10 @@ export class MentorRequestsController {
 
   @UseGuards(JwtAuthGuard)
   @Post()
-  async create(@Req() req: any, @Body() body: { mentorId: string; message?: string }) {
+  async create(
+    @Req() req: any,
+    @Body() body: { mentorId: string; message?: string },
+  ) {
     return await this.mentorRequests.createRequest(req.user.sub, body);
   }
 

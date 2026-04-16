@@ -7,8 +7,6 @@ import { NotFoundException } from '@nestjs/common';
 
 describe('NotificationsService', () => {
   let service: NotificationsService;
-  let prisma: PrismaService;
-  let realtimeEvents: RealtimeEventsService;
 
   const mockPrisma = {
     appNotification: {
@@ -37,8 +35,6 @@ describe('NotificationsService', () => {
     }).compile();
 
     service = module.get<NotificationsService>(NotificationsService);
-    prisma = module.get<PrismaService>(PrismaService);
-    realtimeEvents = module.get<RealtimeEventsService>(RealtimeEventsService);
   });
 
   describe('createAndDispatch', () => {
@@ -220,9 +216,9 @@ describe('NotificationsService', () => {
         count: 0,
       });
 
-      await expect(service.deleteForUser('user123', 'notif123')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.deleteForUser('user123', 'notif123'),
+      ).rejects.toThrow(NotFoundException);
 
       expect(mockPrisma.appNotification.deleteMany).toHaveBeenCalledWith({
         where: { id: 'notif123', userId: 'user123' },
@@ -234,9 +230,9 @@ describe('NotificationsService', () => {
         count: 0,
       });
 
-      await expect(service.deleteForUser('user123', 'nonexistent')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.deleteForUser('user123', 'nonexistent'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
