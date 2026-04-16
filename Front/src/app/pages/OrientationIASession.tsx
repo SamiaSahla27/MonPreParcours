@@ -14,26 +14,26 @@ import {
   X,
 } from "lucide-react";
 import {
-  DEFAULT_VERDICT,
-  PRE_PROFILE_GENERIC_QUESTIONS,
-  SEGMENT_PROFILE_OPTIONS,
-  getMockAiGeneratedQuestionsBySegment,
-  getPhase1QuestionsBySegment,
   getSegmentLabel,
 } from "../orientation/mockData";
 import {
   BaseOrientationQuestion,
+  EducationLevel,
   OrientationSegment,
   PhaseQuestion,
   PhaseQuestionAnswer,
   SessionPhase,
+  QuizAnswer,
 } from "../orientation/types";
 import {
   OrientationResultSession,
   SchoolRecommendationCard,
-  buildNextMockSession,
-  createBaseResultSessions,
 } from "../orientation/data/dashboardMock";
+import {
+  fetchIntroQuestions,
+  startOrientationSession,
+  completeOrientationSession,
+} from "../orientation/api";
 import { ChoiceCard } from "../orientation/components/ChoiceCard";
 import { FuturisticThinking } from "../orientation/components/FuturisticThinking";
 import { NeuralPulseCorner } from "../orientation/components/NeuralPulseCorner";
@@ -41,31 +41,11 @@ import { SessionTopBar } from "../orientation/components/SessionTopBar";
 import { TypewriterText } from "../orientation/components/TypewriterText";
 
 const viteMode = (import.meta as ImportMeta & { env?: { MODE?: string } }).env?.MODE;
-const VERDICT_DELAY_MS = viteMode === "test" ? 0 : 1600;
 const AUTO_SUBMIT_DELAY_MS = viteMode === "test" ? 0 : 130;
 const PROMO_SITE_NAME = "MonPreParcours";
 const PROMO_SITE_URL = "www.monpreparcours.fr";
 const PROMO_SITE_MESSAGE =
   "MonPreParcours t'aide a transformer tes preferences en plan d'orientation clair et actionnable.";
-
-const SEGMENT_SELECTION_QUESTION: PhaseQuestion = {
-  id: "SEGMENT-SELECT",
-  db_key: "type_personnalite",
-  type: "single",
-  segment: "lyceen",
-  questionText: "Quel est ton type de personnalite ?",
-  subText: "Choisis le profil qui te correspond pour definir la phase specialisee",
-  options: SEGMENT_PROFILE_OPTIONS.map((option) => ({
-    title: option.label,
-    value: option.segment,
-    subtitle: option.helper,
-  })),
-  ui_config: {
-    allowFreeText: false,
-    submitButtonText: "Demarrer le profil",
-    helperNote: "Le profil active des questions specifiques a ton niveau.",
-  },
-};
 
 const pageFadeTransition = {
   duration: 0.3,
@@ -241,7 +221,8 @@ function PrintPromoBanner() {
 
 export function OrientationIASession() {
   const navigate = useNavigate();
-  const genericQuestionCount = PRE_PROFILE_GENERIC_QUESTIONS.length;
+  // We no longer use mock generic questions, we use the ones fetched from API
+  const [genericQuestionCount, setGenericQuestionCount] = useState(0);
 
   const [phase, setPhase] = useState<SessionPhase>("quiz");
   const [selectedSegment, setSelectedSegment] = useState<OrientationSegment | null>(null);
@@ -249,11 +230,14 @@ export function OrientationIASession() {
   const [aiQuestionIndex, setAiQuestionIndex] = useState(0);
   const [quizAnswers, setQuizAnswers] = useState<PhaseQuestionAnswer[]>([]);
   const [aiAnswers, setAiAnswers] = useState<PhaseQuestionAnswer[]>([]);
+  const quizAnswersRef = useRef<PhaseQuestionAnswer[]>([]);
+  const aiAnswersRef = useRef<PhaseQuestionAnswer[]>([]);
   const [selectedOptionValues, setSelectedOptionValues] = useState<string[]>([]);
   const [customAnswer, setCustomAnswer] = useState("");
   const [archived, setArchived] = useState(false);
   const [resultSessions, setResultSessions] = useState<OrientationResultSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState("");
+  const [backendSessionId, setBackendSessionId] = useState("");
   const [generationPrompt, setGenerationPrompt] = useState("");
   const [generationError, setGenerationError] = useState("");
   const [isGenerationModalOpen, setIsGenerationModalOpen] = useState(false);
@@ -263,37 +247,36 @@ export function OrientationIASession() {
   const autoSubmitTimeoutRef = useRef<number | null>(null);
   const autoSubmitLockRef = useRef(false);
 
-  const phase1Questions = useMemo(() => {
-    if (!selectedSegment) {
-      return [];
-    }
+  const [phase1Questions, setPhase1Questions] = useState<BaseOrientationQuestion[]>([]);
+  const [aiGeneratedQuestions, setAiGeneratedQuestions] = useState<BaseOrientationQuestion[]>([]);
 
-    return getPhase1QuestionsBySegment(selectedSegment);
-  }, [selectedSegment]);
-
-  const aiGeneratedQuestions = useMemo(() => {
-    if (!selectedSegment) {
-      return [];
-    }
-
-    return getMockAiGeneratedQuestionsBySegment(selectedSegment, 3);
-  }, [selectedSegment]);
+  useEffect(() => {
+    fetchIntroQuestions().then((res) => {
+      const mapped = res.questions.map((q) => ({
+        id: q.id,
+        db_key: q.id,
+        type: "single" as const,
+        questionText: q.prompt,
+        subText: "",
+        options: q.options.map((o) => ({
+          title: o.label,
+          value: o.id,
+          subtitle: o.helper,
+        })),
+        ui_config: {
+          allowFreeText: false,
+          submitButtonText: "Suivant",
+          freeTextPlaceholder: q.inputPlaceholder,
+        },
+      }));
+      setPhase1Questions(mapped);
+      setGenericQuestionCount(mapped.length);
+    });
+  }, []);
 
   const currentQuestion = useMemo(() => {
     if (phase === "quiz") {
-      if (quizQuestionIndex < genericQuestionCount) {
-        return PRE_PROFILE_GENERIC_QUESTIONS[quizQuestionIndex] ?? null;
-      }
-
-      if (quizQuestionIndex === genericQuestionCount) {
-        return SEGMENT_SELECTION_QUESTION;
-      }
-
-      if (!selectedSegment) {
-        return null;
-      }
-
-      return phase1Questions[quizQuestionIndex - genericQuestionCount - 1] ?? null;
+      return phase1Questions[quizQuestionIndex] ?? null;
     }
 
     if (phase === "ai-quiz") {
@@ -301,7 +284,7 @@ export function OrientationIASession() {
     }
 
     return null;
-  }, [aiGeneratedQuestions, aiQuestionIndex, genericQuestionCount, phase, phase1Questions, quizQuestionIndex, selectedSegment]);
+  }, [aiGeneratedQuestions, aiQuestionIndex, phase, phase1Questions, quizQuestionIndex]);
 
   const activeSession = useMemo(() => {
     return resultSessions.find((session) => session.id === activeSessionId) ?? resultSessions[0];
@@ -445,43 +428,131 @@ export function OrientationIASession() {
     }
   }
 
-  function triggerVerdict(archiveAfter = false, segmentOverride?: OrientationSegment | null) {
+  function triggerVerdict(archiveAfter = false) {
     clearGenerationTimeout();
-    const effectiveSegment = segmentOverride ?? selectedSegment;
 
     setPhase("generating");
-    generationTimeoutRef.current = window.setTimeout(() => {
-      const segmentLabel = effectiveSegment ? getSegmentLabel(effectiveSegment) : undefined;
-      const baseSessions = createBaseResultSessions(DEFAULT_VERDICT, segmentLabel);
+    
+    const currentAnswers = aiAnswersRef.current;
 
-      setResultSessions(baseSessions);
-      setActiveSessionId(baseSessions[0]?.id ?? "");
-      setGenerationPrompt("");
-      setGenerationError("");
-      setPhase("chat");
+    // Map AI answers for completeSession
+    const mappedAnswers: QuizAnswer[] = currentAnswers.filter(a => !!a).map((a) => ({
+      questionId: a.questionId,
+      selectedOptionId: a.selectedValues?.[0],
+      selectedOptionLabel: a.selectedTitles?.[0],
+      freeText: a.freeText,
+    }));
 
-      if (archiveAfter) {
-        setArchived(true);
-      }
-    }, VERDICT_DELAY_MS);
+    completeOrientationSession(backendSessionId, { followUpAnswers: mappedAnswers })
+      .then((res) => {
+        const generatedVerdict = res.verdict;
+        
+        // Map backend's AdvisorVerdict to the UI's OrientationVerdict model
+        const mappedVerdict = {
+          profile: generatedVerdict.title,
+          description: generatedVerdict.summary,
+          mainTarget: generatedVerdict.recommendedPath,
+          confidence: parseInt(generatedVerdict.confidenceLabel.replace(/\D/g, "")) || 85,
+          skillsToImprove: generatedVerdict.keySkills,
+        };
+
+        const realSession: OrientationResultSession = {
+          id: backendSessionId,
+          tabLabel: "Résultat IA (Réel)",
+          modificationPrompt: "Généré par ton profil",
+          generatedAt: new Date().toLocaleDateString("fr-FR"),
+          verdict: mappedVerdict,
+          schools: generatedVerdict.schools.map((s, index) => ({
+            id: s.id || `school-${index}`,
+            name: s.name,
+            location: s.city,
+            status: s.status,
+            program: s.program,
+            duration: s.duration,
+            cost: s.annualCost,
+            conclusion: s.whyItFits,
+          })),
+          timeline: generatedVerdict.timeline.map((t, index) => ({
+            id: t.id || `timeline-${index}`,
+            yearTitle: t.yearLabel,
+            subtitle: t.title,
+            details: t.milestones,
+          })),
+        };
+
+        setResultSessions([realSession]);
+        setActiveSessionId(realSession.id);
+        setGenerationPrompt("");
+        setGenerationError("");
+        setPhase("chat");
+
+        if (archiveAfter) {
+          setArchived(true);
+        }
+      })
+      .catch((err) => {
+        console.error("Verdict Generation Error:", err);
+      });
   }
 
-  function triggerAiQuestionPhase(segment: OrientationSegment) {
+  function triggerAiQuestionPhase() {
     clearGenerationTimeout();
     setPhase("generating");
 
-    generationTimeoutRef.current = window.setTimeout(() => {
-      const generated = getMockAiGeneratedQuestionsBySegment(segment, 3);
+    const currentAnswers = quizAnswersRef.current;
 
-      if (generated.length === 0) {
-        triggerVerdict(false, segment);
-        return;
-      }
+    // Mapping phase 1 answers
+    const mappedInitialAnswers: QuizAnswer[] = currentAnswers.filter(a => !!a).map((a) => ({
+      questionId: a.questionId,
+      selectedOptionId: a.selectedValues?.[0],
+      selectedOptionLabel: a.selectedTitles?.[0],
+      freeText: a.freeText,
+    }));
 
-      setAiAnswers([]);
-      setAiQuestionIndex(0);
-      setPhase("ai-quiz");
-    }, VERDICT_DELAY_MS);
+    // Start Session with the mapped answers
+    // Find the educationLevel answer
+    const educLevelAnswer = mappedInitialAnswers.find((a) => a.questionId === "education-level");
+    const edLevel = (educLevelAnswer?.selectedOptionId || "lycee") as EducationLevel;
+
+    startOrientationSession({
+      educationLevel: edLevel,
+      initialAnswers: mappedInitialAnswers,
+    })
+      .then((res) => {
+        setBackendSessionId(res.sessionId);
+        const mappedPhase2 = res.questions.map((q) => ({
+          id: q.id,
+          db_key: q.id,
+          type: "single" as const,
+          questionText: q.prompt,
+          subText: "",
+          options: q.options.map((o) => ({
+            title: o.label,
+            value: o.id,
+            subtitle: o.helper,
+          })),
+          ui_config: {
+            allowFreeText: false,
+            submitButtonText: "Suivant",
+            freeTextPlaceholder: q.inputPlaceholder,
+          },
+        }));
+
+        setAiGeneratedQuestions(mappedPhase2);
+        
+        if (mappedPhase2.length === 0) {
+          triggerVerdict(false);
+          return;
+        }
+
+        aiAnswersRef.current = [];
+        setAiAnswers([]);
+        setAiQuestionIndex(0);
+        setPhase("ai-quiz");
+      })
+      .catch((err) => {
+        console.error("Start Session Error:", err);
+      });
   }
 
   function buildCurrentAnswer(
@@ -505,23 +576,20 @@ export function OrientationIASession() {
 
   function saveCurrentAnswer(answer: PhaseQuestionAnswer) {
     if (phase === "quiz") {
-      setQuizAnswers((previous) => {
-        const next = [...previous];
-        next[quizQuestionIndex] = answer;
-
-        return next.slice(0, quizQuestionIndex + 1);
-      });
-
+      const next = [...quizAnswersRef.current];
+      next[quizQuestionIndex] = answer;
+      const sliced = next.slice(0, quizQuestionIndex + 1);
+      quizAnswersRef.current = sliced;
+      setQuizAnswers(sliced);
       return;
     }
 
     if (phase === "ai-quiz") {
-      setAiAnswers((previous) => {
-        const next = [...previous];
-        next[aiQuestionIndex] = answer;
-
-        return next.slice(0, aiQuestionIndex + 1);
-      });
+      const next = [...aiAnswersRef.current];
+      next[aiQuestionIndex] = answer;
+      const sliced = next.slice(0, aiQuestionIndex + 1);
+      aiAnswersRef.current = sliced;
+      setAiAnswers(sliced);
     }
   }
 
@@ -549,40 +617,10 @@ export function OrientationIASession() {
     saveCurrentAnswer(answer);
 
     if (phase === "quiz") {
-      if (quizQuestionIndex < genericQuestionCount) {
-        setQuizQuestionIndex((previous) => previous + 1);
-        return;
-      }
-
-      if (quizQuestionIndex === genericQuestionCount) {
-        const segmentValue = answer.selectedValues[0] as OrientationSegment | undefined;
-
-        if (!segmentValue) {
-          return;
-        }
-
-        setSelectedSegment(segmentValue);
-        setQuizAnswers((previous) => previous.slice(0, genericQuestionCount + 1));
-
-        const segmentQuestionCount = getPhase1QuestionsBySegment(segmentValue).length;
-        if (segmentQuestionCount === 0) {
-          triggerAiQuestionPhase(segmentValue);
-          return;
-        }
-
-        setQuizQuestionIndex(genericQuestionCount + 1);
-        return;
-      }
-
-      if (!selectedSegment) {
-        return;
-      }
-
-      const phase1Index = quizQuestionIndex - genericQuestionCount - 1;
-      const isLastPhase1Question = phase1Index >= phase1Questions.length - 1;
+      const isLastPhase1Question = quizQuestionIndex >= phase1Questions.length - 1;
 
       if (isLastPhase1Question) {
-        triggerAiQuestionPhase(selectedSegment);
+        triggerAiQuestionPhase();
         return;
       }
 
@@ -685,19 +723,84 @@ export function OrientationIASession() {
       return;
     }
 
-    const generationNumber = resultSessions.length + 1;
-    const nextSession = buildNextMockSession(
-      DEFAULT_VERDICT,
-      generationNumber,
-      trimmedPrompt,
-      selectedSegment ? getSegmentLabel(selectedSegment) : undefined
-    );
-
-    setResultSessions((previous) => [...previous, nextSession]);
-    setActiveSessionId(nextSession.id);
-    setGenerationPrompt("");
-    setGenerationError("");
     setIsGenerationModalOpen(false);
+    setPhase("generating");
+
+    const initialAnswers = quizAnswersRef.current.filter(a => !!a).map((a) => ({
+      questionId: a.questionId,
+      selectedOptionId: a.selectedValues?.[0],
+      selectedOptionLabel: a.selectedTitles?.[0],
+      freeText: a.freeText,
+    }));
+
+    const educLevelAnswer = initialAnswers.find((a) => a.questionId === "education-level");
+    const edLevel = (educLevelAnswer?.selectedOptionId || "lycee") as EducationLevel;
+
+    const followUpAnswers = aiAnswersRef.current.filter(a => !!a).map((a) => ({
+      questionId: a.questionId,
+      selectedOptionId: a.selectedValues?.[0],
+      selectedOptionLabel: a.selectedTitles?.[0],
+      freeText: a.freeText,
+    }));
+
+    startOrientationSession({
+      educationLevel: edLevel,
+      initialAnswers: initialAnswers,
+    })
+      .then((startRes) => {
+        return completeOrientationSession(startRes.sessionId, {
+          followUpAnswers: followUpAnswers,
+          studentNotes: trimmedPrompt, // On envoie les indications ("variante") à l'IA
+        });
+      })
+      .then((res) => {
+        const generatedVerdict = res.verdict;
+        
+        const mappedVerdict = {
+          profile: generatedVerdict.title,
+          description: generatedVerdict.summary,
+          mainTarget: generatedVerdict.recommendedPath,
+          confidence: parseInt(generatedVerdict.confidenceLabel.replace(/\D/g, "")) || 85,
+          skillsToImprove: generatedVerdict.keySkills,
+        };
+
+        const generationNumber = resultSessions.length + 1;
+        const newSession: OrientationResultSession = {
+          id: `gen-${generationNumber}-${Date.now()}`,
+          tabLabel: `Variante ${generationNumber}`,
+          modificationPrompt: trimmedPrompt,
+          generatedAt: new Date().toLocaleDateString("fr-FR"),
+          verdict: mappedVerdict,
+          schools: generatedVerdict.schools.map((s, index) => ({
+            id: s.id || `school-${index}`,
+            name: s.name,
+            location: s.city,
+            status: s.status,
+            program: s.program,
+            duration: s.duration,
+            cost: s.annualCost,
+            conclusion: s.whyItFits,
+          })),
+          timeline: generatedVerdict.timeline.map((t, index) => ({
+            id: t.id || `timeline-${index}`,
+            yearTitle: t.yearLabel,
+            subtitle: t.title,
+            details: t.milestones,
+          })),
+        };
+
+        setResultSessions((prev) => [...prev, newSession]);
+        setActiveSessionId(newSession.id);
+        setGenerationPrompt("");
+        setGenerationError("");
+        setPhase("chat");
+      })
+      .catch((err) => {
+        console.error("Regeneration Error:", err);
+        setGenerationError("La génération a échoué. Vérifiez la connexion.");
+        setIsGenerationModalOpen(true);
+        setPhase("chat");
+      });
   }
 
   function handleOpenGenerationModal() {
@@ -1634,3 +1737,6 @@ export function OrientationIASession() {
     </div>
   );
 }
+
+
+

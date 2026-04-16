@@ -79,8 +79,9 @@ export class GroqOrientationService {
           {
             role: 'system',
             content:
-              'Tu es un conseiller dorientation expert du systeme educatif francais. ' +
+              "Tu es un conseiller d'orientation expert du systeme educatif francais. " +
               'Analyse les informations eleve + contexte et renvoie un plan concret. ' +
+              'ATTENTION TRES IMPORTANT: Si le champ "studentNotes" est fourni (requête de l\'etudiant), TU DOIS ABSOLUMENT LE PRIORISER et changer radicalement de metier/profil pour correspondre exactement à cette demande, en ignorant le profil initial si necessaire. ' +
               'Reponds UNIQUEMENT avec un JSON valide suivant ce schema: ' +
               `${JSON.stringify(SCHEMA_DESCRIPTION)}`,
           },
