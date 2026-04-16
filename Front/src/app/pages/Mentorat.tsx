@@ -346,9 +346,15 @@ export function Mentorat() {
                       Connexion en cours…
                     </p>
                   ) : joinError ? (
-                    <p className="text-sm" style={{ color: "#B91C1C" }}>
-                      Impossible de rejoindre la conversation: {joinError}
-                    </p>
+                    <div className="text-sm" style={{ color: "#B91C1C" }}>
+                      <p className="font-bold mb-1">Impossible de rejoindre la conversation</p>
+                      <p className="text-xs">
+                        {joinError === "FORBIDDEN" && "Cette demande de contact n'a pas encore été acceptée."}
+                        {joinError === "CONNECTION_TIMEOUT" && "Problème de connexion. Vérifiez votre Internet et rechargez la page."}
+                        {joinError === "INVALID_PAYLOAD" && "Paramètres invalides dans l'URL."}
+                        {!["FORBIDDEN", "CONNECTION_TIMEOUT", "INVALID_PAYLOAD"].includes(joinError) && joinError}
+                      </p>
+                    </div>
                   ) : null}
                 </div>
               )}

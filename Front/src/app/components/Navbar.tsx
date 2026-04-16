@@ -3,7 +3,8 @@ import { Link, useNavigate } from "react-router";
 import { Search, Bell, ChevronDown, X } from "lucide-react";
 import { useAuth } from "../services/authStore";
 import * as mentorsApi from "../services/mentorsApi";
-import { RealtimeClient, type MentorNotification } from "../services/realtimeClient";
+import * as notificationsApi from "../services/notificationsApi";
+import { RealtimeClient } from "../services/realtimeClient";
 
 type Suggestion = { label: string; type: string };
 
@@ -26,7 +27,7 @@ export function Navbar() {
 
   const [notifOpen, setNotifOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement | null>(null);
-  const [notifications, setNotifications] = useState<MentorNotification[]>([]);
+  const [notifications, setNotifications] = useState<notificationsApi.AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [toast, setToast] = useState<{ title: string; subtitle?: string } | null>(null);
   const toastTimerRef = useRef<number | null>(null);
@@ -42,58 +43,80 @@ export function Navbar() {
   }, [notifOpen]);
 
   useEffect(() => {
-    if (!realtimeClient || !isMentor) return;
+    if (!realtimeClient || !isAuthenticated || !auth.token) return;
 
-    // Always register presence so the mentor joins their userId room.
-    // Do not rely only on onConnected callback (it can be missed if already connected).
+    let cancelled = false;
+
+    // Charger les notifications initiales
+    notificationsApi
+      .listNotifications({ token: auth.token })
+      .then((items) => {
+        if (cancelled) return;
+        setNotifications(items);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setNotifications([]);
+      });
+
+    // Configurer la souscription au WebSocket
+    const setupNotificationListener = () => {
+      realtimeClient.onNotificationCreated((n) => {
+        if (cancelled) return;
+
+        setNotifications((prev) => {
+          const withoutCurrent = prev.filter((p) => p.id !== n.id);
+          return [n, ...withoutCurrent].slice(0, 50);
+        });
+
+        const inMentorat = window.location.pathname === "/mentorat";
+        const sameConversation =
+          inMentorat &&
+          Boolean(n.mentorId) &&
+          Boolean(n.etudiantId) &&
+          new URLSearchParams(window.location.search).get("mentorId") === n.mentorId &&
+          new URLSearchParams(window.location.search).get("etudiantId") === n.etudiantId;
+
+        if (!sameConversation) {
+          setUnreadCount((c) => c + 1);
+          setToast({ title: n.title, subtitle: n.body ?? undefined });
+          if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+          toastTimerRef.current = window.setTimeout(() => setToast(null), 3500);
+        }
+      });
+    };
+
+    // Connecter la présence et configurer les listeners
     realtimeClient.registerPresence();
+    setupNotificationListener();
 
+    // Reconfigurer les listeners à chaque reconnexion
     realtimeClient.onConnected(() => {
-      // eslint-disable-next-line no-console
-      console.log("[realtime] navbar socket connected");
+      if (cancelled) return;
       realtimeClient.registerPresence();
+      setupNotificationListener();
     });
 
-    realtimeClient.onDisconnected(() => {
-      // eslint-disable-next-line no-console
-      console.log("[realtime] navbar socket disconnected");
-    });
-
-    realtimeClient.onMentorNotification((n) => {
-      // Debug: confirm notification receipt (can be removed later)
-      // eslint-disable-next-line no-console
-      console.log("[realtime] mentor.notification received", n);
-      setNotifications((prev) => [n, ...prev].slice(0, 20));
-
-      const alreadyInConversation = window.location.pathname === "/mentorat";
-      const sameConversation =
-        alreadyInConversation &&
-        new URLSearchParams(window.location.search).get("mentorId") === n.mentorId &&
-        new URLSearchParams(window.location.search).get("etudiantId") === n.etudiantId;
-
-      if (!sameConversation) {
-        setUnreadCount((c) => c + 1);
-        const title =
-          n.type === "message" ? "Nouveau message" : n.type === "call" ? "Appel entrant" : "Nouveau contact";
-        const subtitle =
-          n.type === "message"
-            ? (n.previewText ? n.previewText : "Un étudiant t’a envoyé un message.")
-            : n.type === "call"
-              ? "Un étudiant veut démarrer une visio."
-              : "Un étudiant souhaite te contacter.";
-
-        setToast({ title, subtitle });
-        if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
-        toastTimerRef.current = window.setTimeout(() => setToast(null), 3500);
-      }
-    });
+    // Pollingège automatique des notifications toutes les 30 secondes pour parer les pertes WebSocket
+    const pollInterval = window.setInterval(() => {
+      if (cancelled) return;
+      notificationsApi
+        .listNotifications({ token: auth.token })
+        .then((items) => {
+          if (cancelled) return;
+          setNotifications(items);
+        })
+        .catch(() => {});
+    }, 30000);
 
     return () => {
+      cancelled = true;
+      window.clearInterval(pollInterval);
       realtimeClient.disconnect();
       if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
       toastTimerRef.current = null;
     };
-  }, [realtimeClient, isMentor]);
+  }, [realtimeClient, isAuthenticated, auth.token]);
 
   const [professionSuggestions, setProfessionSuggestions] = useState<string[]>([]);
   const [suggestionsLoaded, setSuggestionsLoaded] = useState(false);
@@ -151,6 +174,38 @@ export function Navbar() {
       navigate(`/mentors?q=${encodeURIComponent(q.trim())}`);
     }
   };
+
+  async function removeNotification(e: React.MouseEvent, notificationId: string) {
+    e.stopPropagation();
+    if (!auth.token) return;
+
+    try {
+      await notificationsApi.deleteNotification({ token: auth.token, notificationId });
+      setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
+    } catch {
+      // keep item if backend deletion fails
+    }
+  }
+
+  function openNotification(n: notificationsApi.AppNotification) {
+    setNotifOpen(false);
+
+    if (n.type === "mentor_request_pending" && isMentor) {
+      navigate("/mentor-requests");
+      return;
+    }
+
+    if (n.type === "mentor_request_accepted" && n.mentorId && n.etudiantId) {
+      navigate(
+        `/mentorat?mentorId=${encodeURIComponent(n.mentorId)}&etudiantId=${encodeURIComponent(n.etudiantId)}`,
+      );
+      return;
+    }
+
+    if (n.type === "mentor_request_refused") {
+      return;
+    }
+  }
 
   return (
     <nav
@@ -364,8 +419,7 @@ export function Navbar() {
                 </div>
 
                 {/* Bell */}
-                {isMentor ? (
-                  <div className="relative" ref={notifRef}>
+                <div className="relative" ref={notifRef}>
                     <button
                       className="relative w-9 h-9 rounded-full flex items-center justify-center transition-colors hover:bg-violet-50"
                       onClick={() => {
@@ -375,6 +429,12 @@ export function Navbar() {
                       aria-label="Notifications"
                     >
                       <Bell size={18} style={{ color: "#6B7280" }} />
+                      {notifications.length > 0 && (
+                        <span
+                          className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full"
+                          style={{ background: "#EF4444" }}
+                        />
+                      )}
                       {unreadCount > 0 ? (
                         <span
                           className="absolute -top-0.5 -right-0.5 min-w-5 h-5 px-1 rounded-full flex items-center justify-center text-[10px]"
@@ -405,7 +465,7 @@ export function Navbar() {
                             className="text-xs mt-0.5"
                             style={{ color: "#9CA3AF", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
                           >
-                            Temps réel (non sauvegardé)
+                            Notifications sauvegardées
                           </div>
                         </div>
 
@@ -417,40 +477,45 @@ export function Navbar() {
                           </div>
                         ) : (
                           <div className="max-h-80 overflow-auto">
-                            {notifications.map((n, idx) => (
-                              <button
-                                key={`${n.conversationId}:${n.createdAt}:${idx}`}
+                            {notifications.map((n) => (
+                              <div
+                                key={n.id}
                                 className="w-full px-4 py-3 text-left hover:bg-violet-50 transition-colors"
-                                onClick={() => {
-                                  setNotifOpen(false);
-                                  navigate(
-                                    `/mentorat?mentorId=${encodeURIComponent(n.mentorId)}&etudiantId=${encodeURIComponent(n.etudiantId)}`,
-                                  );
-                                }}
                               >
-                                <div className="text-sm" style={{ color: "#1F2937", fontWeight: 700 }}>
-                                  {n.type === "message"
-                                    ? "Nouveau message"
-                                    : n.type === "call"
-                                      ? "Appel entrant"
-                                      : "Nouveau contact"}
+                                <div className="flex items-start gap-2">
+                                  <button
+                                    type="button"
+                                    className="flex-1 min-w-0 text-left"
+                                    onClick={() => openNotification(n)}
+                                  >
+                                    <div className="text-sm" style={{ color: "#1F2937", fontWeight: 700 }}>
+                                      {n.title}
+                                    </div>
+                                    {n.body ? (
+                                      <div className="text-xs mt-1" style={{ color: "#6B7280" }}>
+                                        {n.body}
+                                      </div>
+                                    ) : null}
+                                    <div className="text-xs mt-1" style={{ color: "#9CA3AF" }}>
+                                      {new Date(n.createdAt).toLocaleString()}
+                                    </div>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="mt-0.5 rounded p-1 hover:bg-violet-100"
+                                    onClick={(e) => removeNotification(e, n.id)}
+                                    aria-label="Supprimer la notification"
+                                  >
+                                    <X size={14} style={{ color: "#9CA3AF" }} />
+                                  </button>
                                 </div>
-                                {n.type === "message" && n.previewText ? (
-                                  <div className="text-xs mt-1" style={{ color: "#6B7280" }}>
-                                    {n.previewText}
-                                  </div>
-                                ) : null}
-                                <div className="text-xs mt-1" style={{ color: "#9CA3AF" }}>
-                                  {new Date(n.createdAt).toLocaleString()}
-                                </div>
-                              </button>
+                              </div>
                             ))}
                           </div>
                         )}
                       </div>
                     ) : null}
                   </div>
-                ) : null}
 
                 {/* Avatar */}
                 <div className="relative" ref={profileRef}>

@@ -14,6 +14,7 @@ import { Mentors } from "./pages/Mentors";
 import { MentorDetailPage } from "./pages/MentorDetail";
 import { ProfilePage } from "./pages/Profile";
 import { Rencontres } from "./pages/Rencontres";
+import { MentorRequestsPage } from "./pages/MentorRequests";
 
 export const router = createBrowserRouter([
   {
@@ -33,6 +34,7 @@ export const router = createBrowserRouter([
       { path: "register", Component: Register },
       { path: "mentorat", Component: Mentorat },
       { path: "rencontres", Component: Rencontres },
+      { path: "mentor-requests", Component: MentorRequestsPage },
       { path: "profile", Component: ProfilePage },
     ],
   },

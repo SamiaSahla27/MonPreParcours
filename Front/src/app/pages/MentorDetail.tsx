@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { getMentor, type MentorDetail } from "../services/mentorsApi";
+import { createMentorRequest, listIncomingMentorRequests } from "../services/mentorRequestsApi";
 import { Button } from "../components/ui/button";
 import { useAuth } from "../services/authStore";
 
@@ -12,6 +13,9 @@ export function MentorDetailPage() {
   const [mentor, setMentor] = useState<MentorDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [requestLoading, setRequestLoading] = useState(false);
+  const [requestInfo, setRequestInfo] = useState<string | null>(null);
+  const [pendingRequestExists, setPendingRequestExists] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -38,12 +42,42 @@ export function MentorDetailPage() {
       cancelled = true;
     };
   }, [id]);
+useEffect(() => {
+    if (auth.status !== "authenticated" || auth.user?.role !== "etudiant" || !mentor || !auth.token) {
+      setPendingRequestExists(false);
+      return;
+    }
 
+    let cancelled = false;
+
+    async function checkPendingRequest() {
+      try {
+        const requests = await listIncomingMentorRequests({ token: auth.token });
+        if (cancelled) return;
+
+        const hasPending = requests.some(
+          (r) => r.mentorId === mentor.userId && (r.status === "pending" || r.status === "accepted"),
+        );
+        setPendingRequestExists(hasPending);
+      } catch {
+        if (cancelled) return;
+        setPendingRequestExists(false);
+      }
+    }
+
+    checkPendingRequest();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [auth.status, auth.user?.role, auth.token, mentor?.userId]);
+
+  
   const canContact = auth.status === "authenticated" && auth.user?.role === "etudiant";
 
-  const contact = () => {
+  const contact = async () => {
     if (!mentor) return;
-    if (auth.status !== "authenticated" || !auth.user) {
+    if (auth.status !== "authenticated" || !auth.user || !auth.token) {
       navigate(`/login`);
       return;
     }
@@ -52,11 +86,25 @@ export function MentorDetailPage() {
       return;
     }
 
-    // Mentorat expects mentorId + etudiantId (user IDs)
-    const mentorId = mentor.userId;
-    const etudiantId = auth.user.id;
+    setRequestLoading(true);
+    setRequestInfo(null);
 
-    navigate(`/mentorat?mentorId=${encodeURIComponent(mentorId)}&etudiantId=${encodeURIComponent(etudiantId)}`);
+    try {
+      const created = await createMentorRequest({
+        token: auth.token,
+        mentorId: mentor.userId,
+      });
+
+      if (created.alreadyPending) {
+        setRequestInfo("Une demande est déjà en attente de réponse.");
+      } else {
+        setRequestInfo("Demande envoyée au mentor. Tu recevras une notification dès sa réponse.");
+      }
+    } catch (e: any) {
+      setRequestInfo(e?.message ?? "MENTOR_REQUEST_CREATE_FAILED");
+    } finally {
+      setRequestLoading(false);
+    }
   };
 
   return (
@@ -92,9 +140,20 @@ export function MentorDetailPage() {
               </div>
 
               <div className="flex-1 min-w-0">
-                <h1 style={{ color: "#1a1035", fontWeight: 900, letterSpacing: "-0.03em", fontSize: "2rem" }}>
-                  {mentor.fullName}
-                </h1>
+                <div className="flex items-center gap-3 mb-2">
+                  <h1 style={{ color: "#1a1035", fontWeight: 900, letterSpacing: "-0.03em", fontSize: "2rem" }}>
+                    {mentor.fullName}
+                  </h1>
+                  {pendingRequestExists && (
+                    <span
+                      className="text-xs px-2 py-1 rounded-full whitespace-nowrap"
+                      style={{ background: "#FEF3C7", color: "#92400E", fontWeight: 700 }}
+                    >
+                      En attente
+                    </span>
+                  )}
+                </div>
+
                 <div className="mt-1 text-sm" style={{ color: "#7C3AED", fontWeight: 800 }}>
                   {mentor.profession}
                 </div>
@@ -118,8 +177,12 @@ export function MentorDetailPage() {
                 </div>
 
                 <div className="mt-6 flex flex-col sm:flex-row gap-2">
-                  <Button type="button" onClick={contact} disabled={!canContact}>
-                    Contacter (chat / visio)
+                  <Button 
+                    type="button" 
+                    onClick={contact} 
+                    disabled={!canContact || requestLoading || pendingRequestExists}
+                  >
+                    {requestLoading ? "Envoi…" : "Demander un contact (chat / visio)"}
                   </Button>
                   {auth.status !== "authenticated" ? (
                     <Button variant="ghost" type="button" onClick={() => navigate("/login")}>
@@ -131,6 +194,12 @@ export function MentorDetailPage() {
                     </div>
                   ) : null}
                 </div>
+
+                {requestInfo ? (
+                  <div className="mt-3 text-sm rounded-lg border px-3 py-2" style={{ background: "#F5F3FF", borderColor: "rgba(124,58,237,0.18)", color: "#5B21B6" }}>
+                    {requestInfo}
+                  </div>
+                ) : null}
 
                 {(mentor.phone || mentor.email) && (
                   <div className="mt-6 grid gap-1 text-sm" style={{ color: "#6B7280" }}>
@@ -154,3 +223,5 @@ export function MentorDetailPage() {
     </div>
   );
 }
+
+         

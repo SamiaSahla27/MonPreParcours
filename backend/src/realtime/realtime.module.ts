@@ -5,6 +5,7 @@ import { RealtimeService } from './realtime.service';
 import { JwtSocketAuthService } from './security/jwt-socket-auth.service';
 import { ChatMessageStore } from './store/chat-message.store';
 import { DbModule } from '../db/db.module';
+import { RealtimeEventsService } from './realtime-events.service';
 
 @Module({
   imports: [
@@ -17,8 +18,10 @@ import { DbModule } from '../db/db.module';
   providers: [
     RealtimeGateway,
     RealtimeService,
+    RealtimeEventsService,
     JwtSocketAuthService,
     ChatMessageStore,
   ],
+  exports: [RealtimeEventsService],
 })
 export class RealtimeModule {}
