@@ -12,6 +12,18 @@ enum UserRole {
   etudiant
 }
 
+enum MentorContactRequestStatus {
+  pending
+  accepted
+  refused
+}
+
+enum AppNotificationType {
+  mentor_request_pending
+  mentor_request_accepted
+  mentor_request_refused
+}
+
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
@@ -27,6 +39,10 @@ model User {
 
   sentMessages     Message[] @relation("SentMessages")
   receivedMessages Message[] @relation("ReceivedMessages")
+
+  mentorRequestsReceived MentorContactRequest[] @relation("MentorRequestsReceived")
+  mentorRequestsSent     MentorContactRequest[] @relation("MentorRequestsSent")
+  notifications          AppNotification[]
 }
 
 model MentorProfile {
@@ -119,4 +135,41 @@ model Message {
   toUser   User @relation("ReceivedMessages", fields: [toUserId], references: [id])
 
   @@index([conversationId, createdAt])
+}
+
+model MentorContactRequest {
+  id         String                    @id @default(uuid())
+  mentorId   String
+  etudiantId String
+  message    String?
+  status     MentorContactRequestStatus @default(pending)
+  createdAt  DateTime                  @default(now())
+  updatedAt  DateTime                  @updatedAt
+  respondedAt DateTime?
+
+  mentor   User @relation("MentorRequestsReceived", fields: [mentorId], references: [id])
+  etudiant User @relation("MentorRequestsSent", fields: [etudiantId], references: [id])
+
+  notifications AppNotification[]
+
+  @@index([mentorId, status, createdAt])
+  @@index([etudiantId, status, createdAt])
+}
+
+model AppNotification {
+  id             String              @id @default(uuid())
+  userId         String
+  type           AppNotificationType
+  mentorId       String?
+  etudiantId     String?
+  requestId      String?
+  title          String
+  body           String?
+  createdAt      DateTime            @default(now())
+
+  user    User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  request MentorContactRequest? @relation(fields: [requestId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([requestId])
 }

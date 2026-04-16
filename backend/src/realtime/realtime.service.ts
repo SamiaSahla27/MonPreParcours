@@ -6,6 +6,8 @@ import type {
   UserRole,
 } from './types/realtime.types';
 import { ChatMessageStore } from './store/chat-message.store';
+import { PrismaService } from '../db/prisma.service';
+import { MentorContactRequestStatus } from '@prisma/client';
 
 function conversationIdFor(
   mentorId: string,
@@ -18,22 +20,70 @@ function conversationIdFor(
 export class RealtimeService {
   private readonly calls = new Map<ConversationId, CallSession>();
 
-  constructor(private readonly store: ChatMessageStore) {}
+  constructor(
+    private readonly store: ChatMessageStore,
+    private readonly prisma: PrismaService,
+  ) {}
 
   getConversationId(mentorId: string, etudiantId: string): ConversationId {
     return conversationIdFor(mentorId, etudiantId);
   }
 
-  // Option B pairing rule: require explicit mentor+etudiant IDs in join.
-  // We trust pairing exists (out of scope); server enforces roles.
-  canJoinConversation(
+  // Check if user can join the conversation:
+  // 1. Must be one of the two participants
+  // 2. Must have an accepted MentorContactRequest OR existing Conversation
+  async canJoinConversation(
     user: SocketUser,
     mentorId: string,
     etudiantId: string,
-  ): boolean {
-    if (user.role === 'mentor') return user.userId === mentorId;
-    if (user.role === 'etudiant') return user.userId === etudiantId;
-    return false;
+  ): Promise<boolean> {
+    const isParticipant =
+      (user.role === 'mentor' && user.userId === mentorId) ||
+      (user.role === 'etudiant' && user.userId === etudiantId);
+
+    console.log('[RealtimeService.canJoinConversation] Checking participant', {
+      userId: user.userId,
+      userRole: user.role,
+      mentorId,
+      etudiantId,
+      isParticipant,
+    });
+
+    if (!isParticipant) {
+      console.warn('[RealtimeService.canJoinConversation] User is not a participant');
+      return false;
+    }
+
+    // Check if conversation already exists
+    console.log('[RealtimeService.canJoinConversation] Checking conversation table...');
+    const conversation = await this.prisma.conversation.findUnique({
+      where: { mentorId_etudiantId: { mentorId, etudiantId } },
+      select: { id: true },
+    });
+
+    if (conversation) {
+      console.log('[RealtimeService.canJoinConversation] Conversation found');
+      return true;
+    }
+
+    // Fallback: check for accepted request (in case join happens immediately)
+    console.log('[RealtimeService.canJoinConversation] Checking MentorContactRequest table...');
+    const acceptedRequest = await this.prisma.mentorContactRequest.findFirst({
+      where: {
+        mentorId,
+        etudiantId,
+        status: MentorContactRequestStatus.accepted,
+      },
+      select: { id: true },
+    });
+
+    const hasAccess = Boolean(acceptedRequest);
+    console.log('[RealtimeService.canJoinConversation] MentorContactRequest check result:', {
+      hasAccess,
+      requestId: acceptedRequest?.id,
+    });
+
+    return hasAccess;
   }
 
   async listRecentMessages(conversationId: ConversationId): Promise<unknown[]> {
