@@ -5,6 +5,7 @@ import { buildHeuristicVerdict } from './heuristic-verdict';
 import {
   AdvisorVerdict,
   OrientationGroqPayload,
+  OrientationQuizQuestion,
   SchoolRecommendation,
   TimelineStep,
 } from './orientation.types';
@@ -47,6 +48,23 @@ const SCHEMA_DESCRIPTION = {
   ],
 };
 
+const QUESTIONS_SCHEMA_DESCRIPTION = {
+  questions: [
+    {
+      id: 'q1',
+      prompt: "Question posee a l'utilisateur",
+      inputPlaceholder: 'Exemple de reponse attendue',
+      options: [
+        {
+          id: 'opt1',
+          label: 'Option 1',
+          helper: 'Aide optionnelle',
+        },
+      ],
+    },
+  ],
+};
+
 @Injectable()
 export class GroqOrientationService {
   private readonly logger = new Logger(GroqOrientationService.name);
@@ -79,10 +97,21 @@ export class GroqOrientationService {
           {
             role: 'system',
             content:
-              "Tu es un conseiller d'orientation expert du systeme educatif francais. " +
-              'Analyse les informations eleve + contexte et renvoie un plan concret. ' +
+              "Tu es un système intelligent d'orientation professionnelle et scolaire.\n" +
+              "Ton objectif est de poser des questions pertinentes et adaptatives pour comprendre le profil de l'utilisateur et l'aider à définir une orientation.\n" +
+              'Règles :\n' +
+              '1. Commence toujours par identifier le type de profil : étudiant, personne en reconversion, salarié, sans emploi, entrepreneur / indépendant.\n' +
+              '2. En fonction du profil, génère une série de questions spécifiques et adaptées (intérêts, compétences, contraintes, motivations profondes).\n' +
+              '3. Adapte les questions dynamiquement en fonction des réponses précédentes : si vague → creuse, si piste → approfondis, si blocage → explore-le.\n' +
+              '4. Ne pose jamais des questions génériques si elles peuvent être personnalisées.\n' +
+              '5. Structure : 5 à 10 questions maximum par étape, progression logique (général → spécifique).\n' +
+              "6. Ton objectif final est de produire : un profil clair de la personne et des pistes d'orientation cohérentes.\n" +
+              "7. Propose obligatoirement entre 4 et 6 écoles ou formations (dans le tableau ecoles_recommandees) pour donner plusieurs choix à l'utilisateur. Varie tes propositions : écoles publiques, privées, universités, BTS, BUT, formations courtes, en alternance, etc., du moment qu'elles sont reconnues par l'Etat (RNCP, diplôme visé).\n" +
+              "8. Si l'utilisateur mentionne des contraintes (budget limité, zone géographique restreinte, besoin d'alternance), pose des sous-questions spécifiques pour préciser ces critères (ex: 'Quel est ton budget maximum ?', 'Dans quel département souhaites-tu étudier ?') avant de générer le verdict final.\n" +
+              "Exemples d'adaptation : Si étudiant → focus sur matières, préférences, projection. Si reconversion → focus sur expérience, motivations, contraintes.\n" +
+              "Important : Les questions doivent donner l'impression d'un échange humain et personnalisé, pas d'un questionnaire rigide.\n" +
               'ATTENTION TRES IMPORTANT: Si le champ "studentNotes" est fourni (requête de l\'etudiant), TU DOIS ABSOLUMENT LE PRIORISER et changer radicalement de metier/profil pour correspondre exactement à cette demande, en ignorant le profil initial si necessaire. ' +
-              'Reponds UNIQUEMENT avec un JSON valide suivant ce schema: ' +
+              'Reponds UNIQUEMENT avec un JSON valide suivant ce schema pour le VERDICT: ' +
               `${JSON.stringify(SCHEMA_DESCRIPTION)}`,
           },
           {
@@ -103,6 +132,56 @@ export class GroqOrientationService {
         error as Error,
       );
       return buildHeuristicVerdict(payload);
+    }
+  }
+
+  async generateQuestions(
+    payload: OrientationGroqPayload,
+    fallback: OrientationQuizQuestion[],
+  ): Promise<OrientationQuizQuestion[]> {
+    if (!this.client) {
+      return fallback;
+    }
+
+    try {
+      const completion = await this.client.chat.completions.create({
+        model: 'llama-3.3-70b-versatile',
+        response_format: { type: 'json_object' },
+        temperature: 0.3,
+        messages: [
+          {
+            role: 'system',
+            content:
+              "Tu es un spécialiste de l'orientation scolaire et professionnelle.\n" +
+              "L'utilisateur vient de répondre à ses 10 premières questions générales.\n" +
+              'Génère exactement 5 questions pertinentes, précises et ciblées pour creuser son profil, ses intérêts et ses contraintes.\n' +
+              'Tu dois répondre au format JSON exact suivant pour les 5 questions :\n' +
+              `${JSON.stringify(QUESTIONS_SCHEMA_DESCRIPTION)}`,
+          },
+          {
+            role: 'user',
+            content: `Données étudiées : ${JSON.stringify(this.buildPromptPayload(payload))}`,
+          },
+        ],
+      });
+
+      const content = completion.choices?.[0]?.message?.content ?? '';
+      const parsed = JSON.parse(content) as unknown;
+      
+      if (
+        isUnknownRecord(parsed) &&
+        Array.isArray(parsed.questions) &&
+        parsed.questions.length > 0
+      ) {
+        return parsed.questions as unknown as OrientationQuizQuestion[];
+      }
+      return fallback;
+    } catch (error) {
+      this.logger.error(
+        'Echec de la generation des questions Groq',
+        error as Error,
+      );
+      return fallback;
     }
   }
 
@@ -210,10 +289,14 @@ export class GroqOrientationService {
     index: number,
     fallback: SchoolRecommendation,
   ): SchoolRecommendation {
+    const statutRaw = typeof school.statut === 'string' 
+      ? school.statut.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') 
+      : '';
+      
     const statusValue =
-      school.statut === 'Public'
+      statutRaw.includes('public') || statutRaw.includes('publique')
         ? 'Public'
-        : school.statut === 'Prive'
+        : statutRaw.includes('prive')
           ? 'Prive'
           : (fallback?.status ?? 'Public');
 

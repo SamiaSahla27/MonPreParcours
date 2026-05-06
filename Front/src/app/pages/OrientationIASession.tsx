@@ -221,8 +221,6 @@ function PrintPromoBanner() {
 
 export function OrientationIASession() {
   const navigate = useNavigate();
-  // We no longer use mock generic questions, we use the ones fetched from API
-  const [genericQuestionCount, setGenericQuestionCount] = useState(0);
 
   const [phase, setPhase] = useState<SessionPhase>("quiz");
   const [selectedSegment, setSelectedSegment] = useState<OrientationSegment | null>(null);
@@ -270,7 +268,6 @@ export function OrientationIASession() {
         },
       }));
       setPhase1Questions(mapped);
-      setGenericQuestionCount(mapped.length);
     });
   }, []);
 
@@ -294,7 +291,7 @@ export function OrientationIASession() {
 
   const progressLabel = useMemo(() => {
     if (phase === "quiz") {
-      const total = genericQuestionCount + 1 + phase1Questions.length;
+      const total = Math.max(phase1Questions.length, 1);
       return `Question ${Math.min(quizQuestionIndex + 1, total)}/${total}`;
     }
 
@@ -308,7 +305,7 @@ export function OrientationIASession() {
     }
 
     return `Resultats: ${resultSessions.length} generation(s)`;
-  }, [aiGeneratedQuestions.length, aiQuestionIndex, genericQuestionCount, phase, phase1Questions.length, quizQuestionIndex, resultSessions.length]);
+  }, [aiGeneratedQuestions.length, aiQuestionIndex, phase, phase1Questions.length, quizQuestionIndex, resultSessions.length]);
 
   const canSubmitCurrentQuestion = useMemo(() => {
     if (!currentQuestion) {
@@ -500,18 +497,21 @@ export function OrientationIASession() {
     setPhase("generating");
 
     const currentAnswers = quizAnswersRef.current;
+    console.log("triggerAiQuestionPhase: currentAnswers.length =", currentAnswers.length, currentAnswers);
 
     // Mapping phase 1 answers
     const mappedInitialAnswers: QuizAnswer[] = currentAnswers.filter(a => !!a).map((a) => ({
-      questionId: a.questionId,
+      questionId: a.dbKey ?? a.questionId,
       selectedOptionId: a.selectedValues?.[0],
       selectedOptionLabel: a.selectedTitles?.[0],
       freeText: a.freeText,
     }));
+    
+    console.log("triggerAiQuestionPhase: mappedInitialAnswers.length =", mappedInitialAnswers.length, mappedInitialAnswers);
 
     // Start Session with the mapped answers
     // Find the educationLevel answer
-    const educLevelAnswer = mappedInitialAnswers.find((a) => a.questionId === "education-level");
+    const educLevelAnswer = mappedInitialAnswers.find((a) => a.questionId === "education-level" || a.questionId === "q1");
     const edLevel = (educLevelAnswer?.selectedOptionId || "lycee") as EducationLevel;
 
     startOrientationSession({
@@ -624,7 +624,7 @@ export function OrientationIASession() {
         return;
       }
 
-      setQuizQuestionIndex((previous) => previous + 1);
+      setQuizQuestionIndex(quizQuestionIndex + 1);
       return;
     }
 
@@ -636,7 +636,7 @@ export function OrientationIASession() {
         return;
       }
 
-      setAiQuestionIndex((previous) => previous + 1);
+      setAiQuestionIndex(aiQuestionIndex + 1);
     }
   }
 
@@ -727,7 +727,7 @@ export function OrientationIASession() {
     setPhase("generating");
 
     const initialAnswers = quizAnswersRef.current.filter(a => !!a).map((a) => ({
-      questionId: a.questionId,
+      questionId: a.dbKey ?? a.questionId,
       selectedOptionId: a.selectedValues?.[0],
       selectedOptionLabel: a.selectedTitles?.[0],
       freeText: a.freeText,
@@ -737,7 +737,7 @@ export function OrientationIASession() {
     const edLevel = (educLevelAnswer?.selectedOptionId || "lycee") as EducationLevel;
 
     const followUpAnswers = aiAnswersRef.current.filter(a => !!a).map((a) => ({
-      questionId: a.questionId,
+      questionId: a.dbKey ?? a.questionId,
       selectedOptionId: a.selectedValues?.[0],
       selectedOptionLabel: a.selectedTitles?.[0],
       freeText: a.freeText,
@@ -1273,7 +1273,7 @@ export function OrientationIASession() {
                       </div>
                       <div className="mt-3 flex items-center justify-between text-xs font-semibold text-slate-700">
                         <span>Public: {schoolMix.publicCount}</span>
-                        <span>Prive: {schoolMix.privateCount}</span>
+                        <span>Privé: {schoolMix.privateCount}</span>
                       </div>
                     </div>
 
@@ -1297,7 +1297,7 @@ export function OrientationIASession() {
                           </p>
                           <p className="inline-flex items-center gap-2">
                             <span className="h-2.5 w-2.5 rounded-full bg-amber-500" />
-                            Prive: {privateSchoolPercent}%
+                            Privé: {privateSchoolPercent}%
                           </p>
                         </div>
                       </div>
@@ -1409,7 +1409,7 @@ export function OrientationIASession() {
                                 school.status
                               )}`}
                             >
-                              {school.status}
+                              {school.status === "Prive" ? "Privé" : school.status}
                             </span>
                           </div>
 
@@ -1690,7 +1690,7 @@ export function OrientationIASession() {
                           <div className="flex items-start justify-between gap-2">
                             <h3 className="text-sm font-bold text-slate-900">{school.name}</h3>
                             <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-bold text-slate-700">
-                              {school.status}
+                              {school.status === "Prive" ? "Privé" : school.status}
                             </span>
                           </div>
 
@@ -1737,6 +1737,18 @@ export function OrientationIASession() {
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

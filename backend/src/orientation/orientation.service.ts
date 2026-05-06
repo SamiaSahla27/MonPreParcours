@@ -31,19 +31,31 @@ export class OrientationService {
     return getIntroQuestions();
   }
 
-  startSession(
+  async startSession(
     payload: CreateOrientationSessionInput,
-  ): OrientationSessionStartResponse {
+  ): Promise<OrientationSessionStartResponse> {
     const introAnswers = payload.initialAnswers ?? [];
+    console.log("startSession received initialAnswers:", introAnswers);
+    require('fs').appendFileSync('frontend-payload.log', JSON.stringify(payload) + '\n');
     if (introAnswers.length !== INTRO_QUESTION_COUNT) {
       throw new BadRequestException(
-        `Les ${INTRO_QUESTION_COUNT} questions de la phase 1 doivent etre renseignees avant de poursuivre.`,
+        `Les ${INTRO_QUESTION_COUNT} questions de la phase 1 doivent etre renseignees avant de poursuivre. (reçu ${introAnswers.length})`,
       );
     }
 
     const profile = inferOrientationProfile(introAnswers);
-    const phase2Questions = this.cloneQuestions(
+    const fallbackQuestions = this.cloneQuestions(
       getFallbackFollowUpQuestions(profile.id),
+    );
+
+    const phase2Questions = await this.groqService.generateQuestions(
+      {
+        educationLevel: payload.educationLevel,
+        profileId: profile.id,
+        phase1Answers: introAnswers,
+        phase2Answers: [],
+      },
+      fallbackQuestions,
     );
 
     const sessionId = randomUUID();
@@ -52,6 +64,7 @@ export class OrientationService {
       educationLevel: payload.educationLevel,
       profileId: profile.id,
       phase1Answers: introAnswers,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       phase2Questions,
       createdAt: new Date(),
     };
@@ -61,6 +74,7 @@ export class OrientationService {
     return {
       sessionId,
       stage: 'follow-up',
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       questions: phase2Questions,
       profile,
     };

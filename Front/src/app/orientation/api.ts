@@ -19,7 +19,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (!response.ok) {
     const details = await response.text();
-    throw new Error(details || `Requete ${path} echouee (${response.status}).`);
+    let errorMessage = details;
+    try {
+      const parsed = JSON.parse(details);
+      if (parsed.message) {
+         errorMessage = parsed.message;
+      }
+    } catch(e) {
+      // not json, keep string details
+    }
+    throw new Error(errorMessage || `Requete ${path} echouee (${response.status}).`);
   }
 
   return (await response.json()) as T;
@@ -47,4 +56,3 @@ export function completeOrientationSession(
     body: JSON.stringify(payload),
   });
 }
-
