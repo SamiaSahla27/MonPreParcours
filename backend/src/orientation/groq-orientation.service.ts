@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import Groq from 'groq-sdk';
+import Groq, { type Groq as GroqType } from 'groq-sdk';
 import { DEFAULT_VERDICT } from './defaults';
 import { buildHeuristicVerdict } from './heuristic-verdict';
 import {
@@ -68,8 +68,7 @@ const QUESTIONS_SCHEMA_DESCRIPTION = {
 @Injectable()
 export class GroqOrientationService {
   private readonly logger = new Logger(GroqOrientationService.name);
-  private readonly client?: Groq;
-
+  private readonly client?: GroqType;
   constructor() {
     const apiKey = process.env.GROQ_API_KEY;
     if (apiKey) {
