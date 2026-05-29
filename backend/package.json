@@ -17,7 +17,9 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "grok:cli": "ts-node src/grok-orientation-cli.ts",
+    "groq:cli": "ts-node src/groq-orientation-cli.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
@@ -25,6 +27,7 @@
     "@nestjs/jwt": "^11.0.2",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.1",
+    "groq-sdk": "^1.1.2",
     "@nestjs/platform-socket.io": "^11.1.17",
     "@nestjs/websockets": "^11.1.17",
     "@prisma/client": "^6.6.0",

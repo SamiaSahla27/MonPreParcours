@@ -67,6 +67,15 @@ export function CardDetail() {
     setStarted(true);
   };
 
+  const handlePrimaryCta = () => {
+    if (card.id === "decouvrir") {
+      navigate("/orientation-ia");
+      return;
+    }
+
+    setStarted(true);
+  };
+
   return (
     <div
       className="min-h-screen"
@@ -228,7 +237,7 @@ export function CardDetail() {
 
             {/* CTA */}
             <button
-              onClick={handlePrimaryAction}
+              onClick={handlePrimaryCta}
               className="flex items-center justify-center gap-3 w-full py-4 rounded-2xl text-base transition-all duration-200 hover:opacity-90"
               style={{
                 background: card.gradient,

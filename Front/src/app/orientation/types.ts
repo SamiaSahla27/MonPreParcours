@@ -1,0 +1,157 @@
+export type QuestionStage = "intro" | "follow-up";
+
+export type SessionPhase = "quiz" | "generating" | "ai-quiz" | "chat";
+
+export type EducationLevel = "college" | "lycee" | "terminal" | "bac_plus_2" | "reconversion";
+
+export type OrientationSegment = "collegien" | "lyceen" | "etudiant" | "adulte";
+
+export type PhaseQuestionType = "single" | "multi" | "libre";
+
+export interface PhaseQuestionOption {
+  title: string;
+  value: string;
+  subtitle?: string;
+}
+
+export interface PhaseQuestionUiConfig {
+  allowFreeText: boolean;
+  freeTextPrompt?: string;
+  freeTextPlaceholder?: string;
+  submitButtonText: string;
+  helperNote?: string;
+  maxSelections?: number;
+}
+
+export interface BaseOrientationQuestion {
+  id: string;
+  db_key: string;
+  type: PhaseQuestionType;
+  questionText: string;
+  subText: string;
+  options: PhaseQuestionOption[];
+  ui_config: PhaseQuestionUiConfig;
+}
+
+export type PreProfileQuestion = BaseOrientationQuestion;
+
+export interface PhaseQuestion extends BaseOrientationQuestion {
+  segment: OrientationSegment;
+}
+
+export type PhaseQuestionBank = Record<OrientationSegment, PhaseQuestion[]>;
+
+export interface SegmentProfileOption {
+  segment: OrientationSegment;
+  label: string;
+  helper: string;
+}
+
+export interface QuizOption {
+  id: string;
+  label: string;
+  helper?: string;
+}
+
+export interface QuizQuestion {
+  id: string;
+  prompt: string;
+  options: QuizOption[];
+  inputPlaceholder: string;
+}
+
+export interface QuizAnswer {
+  questionId: string;
+  selectedOptionId?: string;
+  selectedOptionLabel?: string;
+  freeText?: string;
+}
+
+export interface PhaseQuestionAnswer {
+  questionId: string;
+  dbKey: string;
+  selectedValues: string[];
+  selectedTitles: string[];
+  freeText?: string;
+}
+
+export interface TimelineStep {
+  id: string;
+  yearLabel: string;
+  title: string;
+  focus: string;
+  milestones: string[];
+}
+
+export type SchoolType = "Public" | "Prive";
+
+export interface SchoolRecommendation {
+  id: string;
+  name: string;
+  city: string;
+  status: SchoolType;
+  program: string;
+  duration: string;
+  annualCost: string;
+  whyItFits: string;
+}
+
+export interface AdvisorVerdict {
+  title: string;
+  summary: string;
+  recommendedPath: string;
+  confidenceLabel: string;
+  keySkills: string[];
+  timeline: TimelineStep[];
+  schools: SchoolRecommendation[];
+}
+
+export interface ChatAttachment {
+  type: "timeline" | "schools";
+  timeline?: TimelineStep[];
+  schools?: SchoolRecommendation[];
+}
+
+export type ChatRole = "assistant" | "user" | "system";
+
+export interface ChatMessage {
+  id: string;
+  role: ChatRole;
+  content: string;
+  createdAt: string;
+  attachments?: ChatAttachment[];
+}
+
+export type OrientationProfileId = "builder" | "strategist" | "creative" | "mentor";
+
+export interface OrientationProfile {
+  id: OrientationProfileId;
+  label: string;
+  summary: string;
+}
+
+export interface OrientationQuestionsResponse {
+  stage: QuestionStage;
+  questions: QuizQuestion[];
+  profile?: OrientationProfile;
+}
+
+export interface CreateOrientationSessionInput {
+  educationLevel: EducationLevel;
+  initialAnswers: QuizAnswer[];
+  contextNotes?: string;
+}
+
+export interface OrientationSessionStartResponse extends OrientationQuestionsResponse {
+  sessionId: string;
+}
+
+export interface CompleteOrientationSessionInput {
+  followUpAnswers: QuizAnswer[];
+  studentNotes?: string;
+}
+
+export interface OrientationVerdictResponse {
+  verdict: AdvisorVerdict;
+}
+
