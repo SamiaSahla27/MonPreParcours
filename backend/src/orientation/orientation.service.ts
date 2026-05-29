@@ -20,6 +20,8 @@ import {
   getFallbackFollowUpQuestions,
   inferOrientationProfile,
 } from './profiles';
+import { randomUUID } from 'node:crypto';
+import { appendFileSync } from 'node:fs';
 
 @Injectable()
 export class OrientationService {
@@ -36,7 +38,10 @@ export class OrientationService {
   ): Promise<OrientationSessionStartResponse> {
     const introAnswers = payload.initialAnswers ?? [];
     console.log("startSession received initialAnswers:", introAnswers);
-    require('fs').appendFileSync('frontend-payload.log', JSON.stringify(payload) + '\n');
+    appendFileSync(
+      'frontend-payload.log',
+      JSON.stringify(payload) + '\n',
+    );
     if (introAnswers.length !== INTRO_QUESTION_COUNT) {
       throw new BadRequestException(
         `Les ${INTRO_QUESTION_COUNT} questions de la phase 1 doivent etre renseignees avant de poursuivre. (reçu ${introAnswers.length})`,
