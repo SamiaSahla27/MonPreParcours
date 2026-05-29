@@ -7,7 +7,7 @@ export type AuthMe = {
 };
 
 function getBaseUrl() {
-  return (import.meta as any).env?.VITE_BACKEND_URL ?? "http://localhost:3000";
+  return (import.meta as any).env?.VITE_BACKEND_URL ?? "/api";
 }
 
 async function http<T>(path: string, init: RequestInit & { token?: string } = {}): Promise<T> {
@@ -19,7 +19,7 @@ async function http<T>(path: string, init: RequestInit & { token?: string } = {}
   const res = await fetch(`${baseUrl}${path}`, { ...init, headers });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(text || `HTTP_${res.status}`);
+    throw new Error("Une erreur est survenue lors de la connexion. Veuillez vérifier vos identifiants et réessayer.");
   }
   return (await res.json()) as T;
 }

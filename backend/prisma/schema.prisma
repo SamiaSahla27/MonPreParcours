@@ -12,6 +12,18 @@ enum UserRole {
   etudiant
 }
 
+enum MentorContactRequestStatus {
+  pending
+  accepted
+  refused
+}
+
+enum AppNotificationType {
+  mentor_request_pending
+  mentor_request_accepted
+  mentor_request_refused
+}
+
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
@@ -20,11 +32,78 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  mentorProfile MentorProfile?
+
   mentorConversations   Conversation[] @relation("MentorConversations")
   etudiantConversations Conversation[] @relation("EtudiantConversations")
 
   sentMessages     Message[] @relation("SentMessages")
   receivedMessages Message[] @relation("ReceivedMessages")
+
+  mentorRequestsReceived MentorContactRequest[] @relation("MentorRequestsReceived")
+  mentorRequestsSent     MentorContactRequest[] @relation("MentorRequestsSent")
+  notifications          AppNotification[]
+}
+
+model MentorProfile {
+  id          String     @id @default(uuid())
+  userId      String     @unique
+  fullName    String
+  description String
+  phone       String?
+  imageUrl    String?
+  emailPublic String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  user       User       @relation(fields: [userId], references: [id])
+  profession Profession @relation(fields: [professionId], references: [id])
+  professionId String
+  location   Location?  @relation(fields: [locationId], references: [id])
+  locationId String?
+
+  skills     MentorSkill[]
+
+  @@index([fullName])
+}
+
+model Profession {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  mentors MentorProfile[]
+}
+
+model Skill {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  mentors MentorSkill[]
+}
+
+model MentorSkill {
+  mentorProfileId String
+  skillId         String
+
+  mentorProfile MentorProfile @relation(fields: [mentorProfileId], references: [id], onDelete: Cascade)
+  skill         Skill         @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@id([mentorProfileId, skillId])
+  @@index([skillId])
+}
+
+model Location {
+  id        String   @id @default(uuid())
+  label     String
+  city      String?
+  country   String?
+  createdAt DateTime @default(now())
+
+  mentors MentorProfile[]
+
+  @@index([label])
 }
 
 model Conversation {
@@ -56,4 +135,41 @@ model Message {
   toUser   User @relation("ReceivedMessages", fields: [toUserId], references: [id])
 
   @@index([conversationId, createdAt])
+}
+
+model MentorContactRequest {
+  id         String                    @id @default(uuid())
+  mentorId   String
+  etudiantId String
+  message    String?
+  status     MentorContactRequestStatus @default(pending)
+  createdAt  DateTime                  @default(now())
+  updatedAt  DateTime                  @updatedAt
+  respondedAt DateTime?
+
+  mentor   User @relation("MentorRequestsReceived", fields: [mentorId], references: [id])
+  etudiant User @relation("MentorRequestsSent", fields: [etudiantId], references: [id])
+
+  notifications AppNotification[]
+
+  @@index([mentorId, status, createdAt])
+  @@index([etudiantId, status, createdAt])
+}
+
+model AppNotification {
+  id             String              @id @default(uuid())
+  userId         String
+  type           AppNotificationType
+  mentorId       String?
+  etudiantId     String?
+  requestId      String?
+  title          String
+  body           String?
+  createdAt      DateTime            @default(now())
+
+  user    User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  request MentorContactRequest? @relation(fields: [requestId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([requestId])
 }
