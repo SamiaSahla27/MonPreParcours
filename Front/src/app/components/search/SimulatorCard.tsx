@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router";
 import { Play, Clock, Users, Zap } from "lucide-react";
 import { SimulatorResult } from "../../data/searchData";
 
@@ -14,7 +15,10 @@ const DIFFICULTY_CONFIG = {
 
 export function SimulatorCard({ result }: Props) {
   const [hovered, setHovered] = useState(false);
+  const navigate = useNavigate();
   const diff = DIFFICULTY_CONFIG[result.difficulty];
+  const simulationRoute =
+    result.id === "sim-dev-1h" ? "/simulations/developpeur-1h" : undefined;
 
   return (
     <div
@@ -122,6 +126,7 @@ export function SimulatorCard({ result }: Props) {
 
         {/* CTA */}
         <button
+          onClick={() => simulationRoute && navigate(simulationRoute)}
           className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm transition-all duration-200"
           style={{
             background: hovered
@@ -134,7 +139,7 @@ export function SimulatorCard({ result }: Props) {
           }}
         >
           <Zap size={14} />
-          Lancer la simulation
+          {simulationRoute ? "Lancer la mission" : "Lancer la simulation"}
         </button>
       </div>
     </div>

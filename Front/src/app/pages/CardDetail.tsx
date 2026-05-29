@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router";
 import { ArrowLeft, CheckCircle2, Star, Clock, Users, ChevronRight } from "lucide-react";
 import { cards } from "../data/cards";
+import { SimulationExplorerPage } from "../components/simulateur/SimulationExplorerPage";
 
 const RELATED_JOBS: Record<string, { title: string; match: number; tag: string }[]> = {
   decouvrir: [
@@ -36,6 +37,10 @@ export function CardDetail() {
   const navigate = useNavigate();
   const [started, setStarted] = useState(false);
 
+  if (cardId === "simulateur") {
+    return <SimulationExplorerPage />;
+  }
+
   const card = cards.find((c) => c.id === cardId);
 
   if (!card) {
@@ -50,6 +55,17 @@ export function CardDetail() {
 
   const Icon = card.icon;
   const relatedJobs = RELATED_JOBS[card.id] || [];
+  const handlePrimaryAction = () => {
+    if (card.id === "simulateur") {
+      navigate("/simulations/developpeur-1h");
+      return;
+    }
+    if (card.id === "mentoring"){
+      navigate("/mentors");
+      return;
+    }
+    setStarted(true);
+  };
 
   const handlePrimaryCta = () => {
     if (card.id === "decouvrir") {

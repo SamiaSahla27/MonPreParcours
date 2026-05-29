@@ -24,5 +24,22 @@ export default defineConfig({
     globals: true,
     css: true,
     setupFiles: './src/test/setupTests.ts',
+
+  // In dev, proxy API + websocket to the backend container so browsers on the LAN
+  // don't need a hard-coded IP/hostname for the API.
+  server: {
+    host: true,
+    proxy: {
+      '/api': {
+        target: 'http://backend:3000',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/api/, ''),
+      },
+      '/socket.io': {
+        target: 'http://backend:3000',
+        ws: true,
+        changeOrigin: true,
+      },
+    },
   },
 })
