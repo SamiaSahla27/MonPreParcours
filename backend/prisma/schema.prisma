@@ -173,3 +173,35 @@ model AppNotification {
   @@index([userId, createdAt])
   @@index([requestId])
 }
+
+model EngagedCompany {
+  id                  String   @id @default(uuid())
+  slug                String   @unique
+  name                String   @unique
+  sector              String
+  location            String
+  size                String
+  workModel           String
+  summary             String
+  pitch               String
+  overallScore        Int
+  inclusionScore      Int
+  equalityScore       Int
+  accessibilityScore  Int
+  socialImpactScore   Int
+  reviewedAt          DateTime
+  labels              Json
+  themes              String[]
+  hiringSignals       String[]
+  initiatives         Json
+  questionsToAsk      String[]
+  evidence            Json
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([slug])
+  @@index([name])
+  @@index([sector])
+  @@index([overallScore])
+  @@index([reviewedAt])
+}

@@ -15,6 +15,7 @@ import { MentorDetailPage } from "./pages/MentorDetail";
 import { ProfilePage } from "./pages/Profile";
 import { Rencontres } from "./pages/Rencontres";
 import { MentorRequestsPage } from "./pages/MentorRequests";
+import { CompaniesDirectory } from "./pages/CompaniesDirectory";
 
 export const router = createBrowserRouter([
   {
@@ -24,6 +25,7 @@ export const router = createBrowserRouter([
       { index: true, Component: PortalHome },
       { path: "explore/simulateur", Component: SimulateurExplorePage },
       { path: "explore/:cardId", Component: CardDetail },
+      { path: "engagement", Component: CompaniesDirectory },
       { path: "search", Component: SearchResults },
       { path: "simulations/developpeur-1h", Component: DeveloperSimulation },
       { path: "simulations/:slug", Component: SimulationMissionPage },

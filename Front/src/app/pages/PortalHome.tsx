@@ -81,7 +81,7 @@ export function PortalHome() {
             <ExplorationCard card={cards[2]} />
           </div>
           <div className="sm:col-span-1">
-            <ExplorationCard card={cards[3]} />
+            <ExplorationCard card={cards[3]} href="/engagement" />
           </div>
           <div className="sm:col-span-1">
             <ExplorationCard card={cards[4]} />

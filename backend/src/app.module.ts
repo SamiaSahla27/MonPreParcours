@@ -8,6 +8,7 @@ import { MentorsModule } from './mentors/mentors.module';
 import { ProfileModule } from './profile/profile.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { MentorRequestsModule } from './mentor-requests/mentor-requests.module';
+import { EngagedCompaniesModule } from './engaged-companies/engaged-companies.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { MentorRequestsModule } from './mentor-requests/mentor-requests.module';
     AuthModule,
     RealtimeModule,
     MentorsModule,
+    EngagedCompaniesModule,
     ProfileModule,
     NotificationsModule,
     MentorRequestsModule,

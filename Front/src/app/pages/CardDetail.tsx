@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useParams, useNavigate, Link } from "react-router";
+import { useParams, useNavigate, Link, Navigate } from "react-router";
 import { ArrowLeft, CheckCircle2, Star, Clock, Users, ChevronRight } from "lucide-react";
 import { cards } from "../data/cards";
 import { SimulationExplorerPage } from "../components/simulateur/SimulationExplorerPage";
@@ -39,6 +39,10 @@ export function CardDetail() {
 
   if (cardId === "simulateur") {
     return <SimulationExplorerPage />;
+  }
+
+  if (cardId === "inclusion") {
+    return <Navigate to="/engagement" replace />;
   }
 
   const card = cards.find((c) => c.id === cardId);

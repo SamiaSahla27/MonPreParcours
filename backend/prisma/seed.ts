@@ -1,5 +1,6 @@
-import { PrismaClient, UserRole } from '@prisma/client';
+import { Prisma, PrismaClient, UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { ENGAGED_COMPANIES_SEED_DATA } from './engaged-companies.seed-data';
 
 const prisma = new PrismaClient();
 
@@ -16,6 +17,30 @@ async function upsertSkill(name: string) {
     where: { name },
     update: {},
     create: { name },
+  });
+}
+
+async function upsertLocation(params: {
+  label: string;
+  city?: string;
+  country?: string;
+}) {
+  const existing = await prisma.location.findFirst({
+    where: {
+      label: params.label,
+      city: params.city ?? null,
+      country: params.country ?? null,
+    },
+  });
+
+  if (existing) return existing;
+
+  return prisma.location.create({
+    data: {
+      label: params.label,
+      city: params.city,
+      country: params.country,
+    },
   });
 }
 
@@ -36,12 +61,10 @@ async function createMentor(params: {
   const profession = await upsertProfession(params.professionName);
 
   const location = params.locationLabel
-    ? await prisma.location.create({
-        data: {
-          label: params.locationLabel,
-          city: params.city,
-          country: params.country,
-        },
+    ? await upsertLocation({
+        label: params.locationLabel,
+        city: params.city,
+        country: params.country,
       })
     : null;
 
@@ -98,6 +121,61 @@ async function createMentor(params: {
   });
 }
 
+async function upsertEngagedCompanies() {
+  for (const company of ENGAGED_COMPANIES_SEED_DATA) {
+    const labels = company.labels as unknown as Prisma.InputJsonValue;
+    const initiatives = company.initiatives as unknown as Prisma.InputJsonValue;
+    const evidence = company.evidence as unknown as Prisma.InputJsonValue;
+
+    await prisma.engagedCompany.upsert({
+      where: { slug: company.slug },
+      update: {
+        name: company.name,
+        sector: company.sector,
+        location: company.location,
+        size: company.size,
+        workModel: company.workModel,
+        summary: company.summary,
+        pitch: company.pitch,
+        overallScore: company.overallScore,
+        inclusionScore: company.inclusionScore,
+        equalityScore: company.equalityScore,
+        accessibilityScore: company.accessibilityScore,
+        socialImpactScore: company.socialImpactScore,
+        reviewedAt: new Date(company.reviewedAt),
+        labels,
+        themes: company.themes,
+        hiringSignals: company.hiringSignals,
+        initiatives,
+        questionsToAsk: company.questionsToAsk,
+        evidence,
+      },
+      create: {
+        slug: company.slug,
+        name: company.name,
+        sector: company.sector,
+        location: company.location,
+        size: company.size,
+        workModel: company.workModel,
+        summary: company.summary,
+        pitch: company.pitch,
+        overallScore: company.overallScore,
+        inclusionScore: company.inclusionScore,
+        equalityScore: company.equalityScore,
+        accessibilityScore: company.accessibilityScore,
+        socialImpactScore: company.socialImpactScore,
+        reviewedAt: new Date(company.reviewedAt),
+        labels,
+        themes: company.themes,
+        hiringSignals: company.hiringSignals,
+        initiatives,
+        questionsToAsk: company.questionsToAsk,
+        evidence,
+      },
+    });
+  }
+}
+
 async function main() {
   await createMentor({
     email: 'mentor.ds@example.com',
@@ -142,6 +220,8 @@ async function main() {
     imageUrl: 'https://images.unsplash.com/photo-1548142813-c348350df52b?auto=format&fit=crop&w=600&q=80',
     emailPublic: 'aicha.ndiaye@example.com',
   });
+
+  await upsertEngagedCompanies();
 
   console.log('Seed completed');
 }
