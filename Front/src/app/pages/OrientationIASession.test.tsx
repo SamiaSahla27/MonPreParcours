@@ -1,8 +1,23 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { OrientationQuestionsResponse } from "../orientation/types";
+
 import { OrientationIASession } from "./OrientationIASession";
+import { OrientationQuestionsResponse } from "../orientation/types";
+
+vi.mock("../orientation/api", () => ({
+  completeOrientationSession: vi.fn().mockResolvedValue({
+    verdict: {
+      title: "Profil Test",
+      summary: "Resume test",
+      recommendedPath: "Parcours test",
+      confidenceLabel: "85%",
+      keySkills: ["Communication"],
+      schools: [],
+      timeline: [],
+    },
+  }),
+}));
 
 const INTRO_RESPONSE: OrientationQuestionsResponse = {
   stage: "intro",
@@ -43,11 +58,13 @@ beforeEach(() => {
     ok: true,
     json: async () => INTRO_RESPONSE,
   });
+
   vi.stubGlobal("fetch", fetchMock);
 });
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.clearAllMocks();
 });
 
 describe("OrientationIASession", () => {
@@ -55,6 +72,7 @@ describe("OrientationIASession", () => {
     renderSession();
 
     expect(await screen.findByText("Session active")).toBeInTheDocument();
+
     expect(screen.getByTestId("quiz-question-full").textContent).toContain(
       INTRO_RESPONSE.questions[0].prompt
     );
@@ -63,12 +81,26 @@ describe("OrientationIASession", () => {
   it("permet d'archiver la session", async () => {
     renderSession();
 
-    fireEvent.click(await screen.findByRole("button", { name: /Cloturer la session/i }));
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: /Cloturer la session/i,
+      })
+    );
 
     expect(
       await screen.findByText(/Cette session est terminee et archivee/i)
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Exporter en PDF/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Imprimer/i })).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("button", {
+        name: /Exporter en PDF/i,
+      })
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("button", {
+        name: /Imprimer/i,
+      })
+    ).toBeInTheDocument();
   });
 });
