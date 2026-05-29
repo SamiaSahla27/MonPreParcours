@@ -1,23 +1,9 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { OrientationIASession } from "./OrientationIASession";
 import { OrientationQuestionsResponse } from "../orientation/types";
-
-vi.mock("../orientation/api", () => ({
-  completeOrientationSession: vi.fn().mockResolvedValue({
-    verdict: {
-      title: "Profil Test",
-      summary: "Resume test",
-      recommendedPath: "Parcours test",
-      confidenceLabel: "85%",
-      keySkills: ["Communication"],
-      schools: [],
-      timeline: [],
-    },
-  }),
-}));
 
 const INTRO_RESPONSE: OrientationQuestionsResponse = {
   stage: "intro",
@@ -43,7 +29,27 @@ const INTRO_RESPONSE: OrientationQuestionsResponse = {
   ],
 };
 
-let fetchMock: ReturnType<typeof vi.fn>;
+vi.mock("../orientation/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../orientation/api")>();
+
+  return {
+    ...actual,
+
+    fetchIntroQuestions: vi.fn().mockResolvedValue(INTRO_RESPONSE),
+
+    completeOrientationSession: vi.fn().mockResolvedValue({
+      verdict: {
+        title: "Profil Test",
+        summary: "Resume test",
+        recommendedPath: "Parcours test",
+        confidenceLabel: "85%",
+        keySkills: ["Communication"],
+        schools: [],
+        timeline: [],
+      },
+    }),
+  };
+});
 
 function renderSession() {
   return render(
@@ -53,17 +59,7 @@ function renderSession() {
   );
 }
 
-beforeEach(() => {
-  fetchMock = vi.fn().mockResolvedValue({
-    ok: true,
-    json: async () => INTRO_RESPONSE,
-  });
-
-  vi.stubGlobal("fetch", fetchMock);
-});
-
 afterEach(() => {
-  vi.unstubAllGlobals();
   vi.clearAllMocks();
 });
 
