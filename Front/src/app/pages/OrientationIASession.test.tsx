@@ -1,102 +1,84 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import {fireEvent, render, screen} from "@testing-library/react";
+import {MemoryRouter} from "react-router";
+import {afterEach, describe, expect, it, vi} from "vitest";
 
-import { OrientationIASession } from "./OrientationIASession";
-import { OrientationQuestionsResponse } from "../orientation/types";
+import {OrientationIASession} from "./OrientationIASession";
+import {OrientationQuestionsResponse} from "../orientation/types";
 
 const INTRO_RESPONSE: OrientationQuestionsResponse = {
-  stage: "intro",
-  questions: [
-    {
-      id: "education-level",
-      prompt: "Quel est ton niveau actuel ?",
-      inputPlaceholder: "Ex: Premiere, Terminale...",
-      options: [
-        { id: "lycee", label: "Lycee" },
-        { id: "terminal", label: "Terminale" },
-      ],
-    },
-    {
-      id: "motivation-core",
-      prompt: "Quelle mission te motive le plus ?",
-      inputPlaceholder: "Ex: Construire des apps",
-      options: [
-        { id: "build", label: "Construire" },
-        { id: "support", label: "Accompagner" },
-      ],
-    },
-  ],
+    stage: "intro",
+    questions: [
+        {
+            id: "education-level",
+            prompt: "Quel est ton niveau actuel ?",
+            inputPlaceholder: "Ex: Premiere, Terminale...",
+            options: [
+                {id: "lycee", label: "Lycee"},
+                {id: "terminal", label: "Terminale"},
+            ],
+        },
+        {
+            id: "motivation-core",
+            prompt: "Quelle mission te motive le plus ?",
+            inputPlaceholder: "Ex: Construire des apps",
+            options: [
+                {id: "build", label: "Construire"},
+                {id: "support", label: "Accompagner"},
+            ],
+        },
+    ],
 };
 
 vi.mock("../orientation/api", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../orientation/api")>();
-
-  return {
-    ...actual,
-
-    fetchIntroQuestions: vi.fn().mockResolvedValue(INTRO_RESPONSE),
-
-    completeOrientationSession: vi.fn().mockResolvedValue({
-      verdict: {
-        title: "Profil Test",
-        summary: "Resume test",
-        recommendedPath: "Parcours test",
-        confidenceLabel: "85%",
-        keySkills: ["Communication"],
-        schools: [],
-        timeline: [],
-      },
-    }),
-  };
+    const actual = await importOriginal<typeof import("../orientation/api")>();
+    return {
+        ...actual,
+        fetchIntroQuestions: vi.fn().mockResolvedValue({
+            stage: "intro",
+            questions: [{
+                id: "education-level",
+                prompt: "Quel est ton niveau actuel ?",
+                inputPlaceholder: "Ex: Premiere, Terminale...",
+                options: [{id: "lycee", label: "Lycee"}, {id: "terminal", label: "Terminale"},],
+            }, {
+                id: "motivation-core",
+                prompt: "Quelle mission te motive le plus ?",
+                inputPlaceholder: "Ex: Construire des apps",
+                options: [{id: "build", label: "Construire"}, {id: "support", label: "Accompagner"},],
+            },],
+        }),
+        completeOrientationSession: vi.fn().mockResolvedValue({
+            verdict: {
+                title: "Profil Test",
+                summary: "Resume test",
+                recommendedPath: "Parcours test",
+                confidenceLabel: "85%",
+                keySkills: ["Communication"],
+                schools: [],
+                timeline: [],
+            },
+        }),
+    };
 });
 
 function renderSession() {
-  return render(
-    <MemoryRouter>
-      <OrientationIASession />
-    </MemoryRouter>
-  );
+    return render(<MemoryRouter> <OrientationIASession/> </MemoryRouter>);
 }
 
 afterEach(() => {
-  vi.clearAllMocks();
+    vi.clearAllMocks();
 });
-
 describe("OrientationIASession", () => {
-  it("affiche la premiere question du questionnaire API", async () => {
-    renderSession();
-
-    expect(await screen.findByText("Session active")).toBeInTheDocument();
-
-    expect(screen.getByTestId("quiz-question-full").textContent).toContain(
-      INTRO_RESPONSE.questions[0].prompt
-    );
-  });
-
-  it("permet d'archiver la session", async () => {
-    renderSession();
-
-    fireEvent.click(
-      await screen.findByRole("button", {
-        name: /Cloturer la session/i,
-      })
-    );
-
-    expect(
-      await screen.findByText(/Cette session est terminee et archivee/i)
-    ).toBeInTheDocument();
-
-    expect(
-      screen.getByRole("button", {
-        name: /Exporter en PDF/i,
-      })
-    ).toBeInTheDocument();
-
-    expect(
-      screen.getByRole("button", {
-        name: /Imprimer/i,
-      })
-    ).toBeInTheDocument();
-  });
+    it("affiche la premiere question du questionnaire API", async () => {
+        renderSession();
+        expect(await screen.findByText("Session active")).toBeInTheDocument();
+        expect(screen.getByTestId("quiz-question-full").textContent).toContain("Quel est ton niveau actuel ?");
+    });
+    it("permet d'archiver la session", async () => {
+        renderSession();
+        fireEvent.click(await screen.findByRole("button", {name: /Cloturer la session/i,}));
+        expect(await screen.findByText(/Cette session est terminee et archivee/i)).toBeInTheDocument();
+        expect(screen.getByRole("button", {name: /Exporter en PDF/i})).toBeInTheDocument();
+        expect(screen.getByRole("button", {name: /Imprimer/i})).toBeInTheDocument();
+    });
 });
