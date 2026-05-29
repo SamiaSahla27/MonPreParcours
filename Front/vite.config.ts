@@ -1,45 +1,47 @@
-import { defineConfig } from 'vite'
+import {defineConfig} from 'vite'
 import path from 'path'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
-  plugins: [
-    // The React and Tailwind plugins are both required for Make, even if
-    // Tailwind is not being actively used – do not remove them
-    react(),
-    tailwindcss(),
-  ],
-  resolve: {
-    alias: {
-      // Alias @ to the src directory
-      '@': path.resolve(__dirname, './src'),
+    plugins: [
+        // The React and Tailwind plugins are both required for Make, even if
+        // Tailwind is not being actively used – do not remove them
+        react(),
+        tailwindcss(),
+    ],
+    resolve: {
+        alias: {
+            // Alias @ to the src directory
+            '@': path.resolve(__dirname, './src'),
+        },
     },
-  },
 
-  // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
-  assetsInclude: ['**/*.svg', '**/*.csv'],
-  test: {
-    environment: 'jsdom',
-    globals: true,
-    css: true,
-    setupFiles: './src/test/setupTests.ts',
+    // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
+    assetsInclude: ['**/*.svg', '**/*.csv'],
+    test: {
+        environment: 'jsdom',
+        globals: true,
+        css: true,
+        setupFiles: './src/test/setupTests.ts',
 
-  // In dev, proxy API + websocket to the backend container so browsers on the LAN
-  // don't need a hard-coded IP/hostname for the API.
-  server: {
-    host: true,
-    proxy: {
-      '/api': {
-        target: 'http://backend:3000',
-        changeOrigin: true,
-        rewrite: (p) => p.replace(/^\/api/, ''),
-      },
-      '/socket.io': {
-        target: 'http://backend:3000',
-        ws: true,
-        changeOrigin: true,
-      },
+        // In dev, proxy API + websocket to the backend container so browsers on the LAN
+        // don't need a hard-coded IP/hostname for the API.
+        server: {
+            host: true,
+            proxy: {
+                '/api': {
+                    target: 'http://backend:3000',
+                    changeOrigin: true,
+                    rewrite: (p) => p.replace(/^\/api/, ''),
+                },
+                '/socket.io': {
+                    target: 'http://backend:3000',
+                    ws: true,
+                    changeOrigin: true,
+                },
+            },
+        },
     },
-  },
 })
+

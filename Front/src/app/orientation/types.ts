@@ -33,7 +33,7 @@ export interface BaseOrientationQuestion {
   ui_config: PhaseQuestionUiConfig;
 }
 
-export interface PreProfileQuestion extends BaseOrientationQuestion {}
+export type PreProfileQuestion = BaseOrientationQuestion;
 
 export interface PhaseQuestion extends BaseOrientationQuestion {
   segment: OrientationSegment;
