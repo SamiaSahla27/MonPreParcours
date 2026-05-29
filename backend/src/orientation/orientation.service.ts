@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
+import { appendFileSync } from 'node:fs';
 import { GroqOrientationService } from './groq-orientation.service';
 import { INTRO_QUESTION_COUNT, getIntroQuestions } from './question-bank';
 import {
@@ -20,8 +21,6 @@ import {
   getFallbackFollowUpQuestions,
   inferOrientationProfile,
 } from './profiles';
-import { randomUUID } from 'node:crypto';
-import { appendFileSync } from 'node:fs';
 
 @Injectable()
 export class OrientationService {
