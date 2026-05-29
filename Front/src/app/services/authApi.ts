@@ -7,7 +7,7 @@ export type AuthMe = {
 };
 
 function getBaseUrl() {
-  return (import.meta as any).env?.VITE_BACKEND_URL ?? "/api";
+  return import.meta.env.VITE_BACKEND_URL ?? "/api";
 }
 
 async function http<T>(path: string, init: RequestInit & { token?: string } = {}): Promise<T> {
