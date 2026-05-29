@@ -71,8 +71,10 @@ export function CardDetail() {
     if (card.id === "decouvrir") {
       navigate("/orientation-ia");
       return;
+    } if (card.id === "mentoring") {
+      navigate("/mentors");
+      return;
     }
-
     setStarted(true);
   };
 
