@@ -1,0 +1,84 @@
+{
+  "slug": "developpeur-1h",
+  "slots": [
+    {
+      "id": "slot-9h",
+      "heure": "9h00",
+      "titre": "Stand-up meeting — 15 min",
+      "description": "Chaque dev dit ce qu'il a fait hier, ce qu'il fait aujourd'hui, et ses blocages.",
+      "state": "done",
+      "choices": []
+    },
+    {
+      "id": "slot-10h",
+      "heure": "10h30",
+      "titre": "Ticket urgent — bug en production",
+      "description": "Un client signale que l'appli plante quand il entre une date en 2026. C'est bloquant. Tu es en train de finir une autre feature.",
+      "state": "active",
+      "choices": [
+        {
+          "label": "Je mets ma feature en pause et je traite le bug immédiatement",
+          "feedback": "Bonne priorité. En prod, un bug bloquant passe toujours avant les nouvelles features."
+        },
+        {
+          "label": "Je finis ma feature (30 min) puis je traite le bug",
+          "feedback": "Risqué. 30 min de blocage supplémentaire pour des utilisateurs en prod, c'est long."
+        },
+        {
+          "label": "Je signale le bug à mon tech lead et j'attends ses instructions",
+          "feedback": "Correct dans certaines équipes. Escalader montre que tu sais ne pas décider seul en cas de doute."
+        }
+      ]
+    },
+    {
+      "id": "slot-14h",
+      "heure": "14h00",
+      "titre": "Client non-tech au téléphone",
+      "description": "Il ne comprend pas pourquoi son export CSV ne fonctionne pas. Il est frustré.",
+      "state": "locked",
+      "choices": [
+        {
+          "label": "Je lui explique techniquement ce qui se passe",
+          "feedback": "Risqué. Le jargon technique frustre encore plus un client non-tech."
+        },
+        {
+          "label": "Je reformule simplement sans jargon et lui propose une solution",
+          "feedback": "Excellent réflexe. Simplifier sans condescendre est une compétence clé du dev moderne."
+        },
+        {
+          "label": "Je lui envoie la doc technique",
+          "feedback": "Mauvaise approche. La doc ne résout pas sa frustration."
+        }
+      ]
+    },
+    {
+      "id": "slot-16h",
+      "heure": "16h30",
+      "titre": "Code review d'un collègue junior",
+      "description": "Tu dois relire et commenter le code de quelqu'un d'autre avant la mise en prod.",
+      "state": "locked",
+      "choices": [
+        {
+          "label": "Je valide rapidement pour ne pas le bloquer",
+          "feedback": "Risqué. Une review bâclée peut laisser passer des bugs en prod."
+        },
+        {
+          "label": "Je commente chaque point avec une explication pédagogique",
+          "feedback": "Parfait. Une bonne review aide le junior à progresser, pas juste à corriger."
+        },
+        {
+          "label": "Je réécris son code moi-même directement",
+          "feedback": "Non. Réécrire le code de quelqu'un sans explication ne l'aide pas à apprendre."
+        }
+      ]
+    },
+    {
+      "id": "slot-18h",
+      "heure": "18h00",
+      "titre": "Fin de journée",
+      "description": "Bilan et score de compatibilité.",
+      "state": "locked",
+      "choices": []
+    }
+  ]
+}

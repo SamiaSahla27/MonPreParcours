@@ -13,6 +13,7 @@ export interface CardData {
   need: string;
   description: string;
   badge?: string;
+  href? : string;
   accentColor: string;
   lightColor: string;
   textOnAccent: string;
@@ -28,13 +29,14 @@ export const cards: CardData[] = [
     id: "decouvrir",
     label: "Orientation IA",
     need: "J'ai besoin d'être aidé pour savoir quel métier pourrait me correspondre",
-    description: "Quiz carrière IA, suggestions personnalisées, parcours sur-mesure",
+    description: "Parcours prioritaire: quiz IA, recommandations ciblees, plan d'action concret",
     badge: "Recommandé",
-    accentColor: "#7C3AED",
-    lightColor: "#EDE9FE",
+    accentColor: "#6D28D9",
+    lightColor: "#F3E8FF",
+  href: "explore",
     textOnAccent: "#FFFFFF",
     icon: Sparkles,
-    gradient: "linear-gradient(135deg, #7C3AED 0%, #5B21B6 100%)",
+    gradient: "linear-gradient(135deg, #6D28D9 0%, #9333EA 45%, #C026D3 100%)",
     detailTitle: "Découvrir mon métier idéal",
     detailFeatures: [
       { title: "Quiz de personnalité IA", description: "30 questions intelligentes qui analysent tes valeurs, compétences et aspirations pour te proposer des métiers qui te correspondent vraiment." },
@@ -46,6 +48,7 @@ export const cards: CardData[] = [
   {
     id: "simulateur",
     label: "Simulations",
+    href: "explore/simulateur",
     need: "J'ai besoin de voir des simulateurs de métier",
     description: "Simulations immersives, journées-type, missions interactives",
     accentColor: "#F97316",
@@ -64,6 +67,7 @@ export const cards: CardData[] = [
   {
     id: "mentoring",
     label: "Mentorat",
+    href: "mentors",
     need: "Je veux avoir des interactions avec des professionnels",
     description: "Sessions de mentorat live, témoignages, Q&A avec des experts",
     accentColor: "#10B981",
@@ -82,6 +86,7 @@ export const cards: CardData[] = [
   {
     id: "inclusion",
     label: "Engagement",
+    href: "rencontres",
     need: "Je veux savoir si des entreprises ont fait des actions impactantes sur l'inclusion et la diversité",
     description: "Labels RSE, index diversité, initiatives concrètes des employeurs",
     accentColor: "#F43F5E",
@@ -100,6 +105,7 @@ export const cards: CardData[] = [
   {
     id: "futur",
     label: "Futur & IA",
+    href: "rencontres",
     need: "Je veux savoir si des métiers vont résister face à la montée de l'IA",
     description: "Score de résilience des métiers, compétences clés, métiers émergents",
     badge: "Nouveau",

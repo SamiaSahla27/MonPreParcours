@@ -1,9 +1,25 @@
 import React from "react";
+import { CalendarDays } from "lucide-react";
 import { HeroGreeting } from "../components/HeroGreeting";
 import { ExplorationCard } from "../components/ExplorationCard";
-import { cards } from "../data/cards";
+import { cards, type CardData } from "../data/cards";
 
 export function PortalHome() {
+  const evenementsCard: CardData = {
+    id: "rencontres",
+    label: "RENCONTRES PRO",
+    need: "Je veux découvrir des entreprises et rencontrer des pros en vrai",
+    description: "Journées portes ouvertes, afterworks, immersions en entreprise",
+    accentColor: cards[1]?.accentColor ?? "#F97316",
+    lightColor: cards[1]?.lightColor ?? "#FFF7ED",
+    textOnAccent: "#FFFFFF",
+    icon: CalendarDays,
+    gradient: cards[1]?.gradient ?? "linear-gradient(135deg, #F97316 0%, #EA580C 100%)",
+    detailTitle: "Découvrir des rencontres",
+    detailFeatures: [],
+    ctaLabel: "Voir les rencontres",
+  };
+
   return (
     <div
       className="min-h-screen"
@@ -32,6 +48,18 @@ export function PortalHome() {
             >
               Clique sur une carte pour commencer
             </p>
+            <div
+              className="mt-3 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs"
+              style={{
+                background: "linear-gradient(135deg, #6D28D9 0%, #A21CAF 100%)",
+                color: "#FFFFFF",
+                fontFamily: "'Plus Jakarta Sans', sans-serif",
+                fontWeight: 700,
+                boxShadow: "0 8px 24px rgba(109, 40, 217, 0.28)",
+              }}
+            >
+              <span>Orientation IA</span>
+            </div>
           </div>
           <div
             className="hidden sm:flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full"
@@ -53,7 +81,11 @@ export function PortalHome() {
             <ExplorationCard card={cards[0]} featured />
           </div>
           <div className="sm:col-span-1">
+            {/* TODO: Simulations — désactivé temporairement, à réactiver quand prêt */}
+            {/*
             <ExplorationCard card={cards[1]} />
+            */}
+            <ExplorationCard card={evenementsCard} href="/rencontres" />
           </div>
 
           {/* Row 2: Cards 3, 4, 5 equal width */}

@@ -1,15 +1,12 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Search, Bell, ChevronDown, X } from "lucide-react";
 import { useAuth } from "../services/authStore";
+import * as mentorsApi from "../services/mentorsApi";
+import * as notificationsApi from "../services/notificationsApi";
+import { RealtimeClient } from "../services/realtimeClient";
 
-const SEARCH_SUGGESTIONS = [
-  { label: "Data Scientist", type: "Métier" },
-  { label: "UX Designer", type: "Métier" },
-  { label: "Développeur React", type: "Compétence" },
-  { label: "Intelligence Artificielle", type: "Secteur" },
-  { label: "Marketing Digital", type: "Secteur" },
-];
+type Suggestion = { label: string; type: string };
 
 export function Navbar() {
   const auth = useAuth();
@@ -17,6 +14,150 @@ export function Navbar() {
   const [searchFocused, setSearchFocused] = useState(false);
   const [activeLink, setActiveLink] = useState("Explorer");
   const navigate = useNavigate();
+
+  const isAuthenticated = auth.status === "authenticated";
+
+  const backendUrl = import.meta.env.VITE_BACKEND_URL ?? "/api";
+  const realtimeClient = useMemo(() => {
+    if (!auth.token) return null;
+    return new RealtimeClient({ baseUrl: backendUrl, token: auth.token });
+  }, [backendUrl, auth.token]);
+
+  const isMentor = isAuthenticated && auth.user?.role === "mentor";
+
+  const [notifOpen, setNotifOpen] = useState(false);
+  const notifRef = useRef<HTMLDivElement | null>(null);
+  const [notifications, setNotifications] = useState<notificationsApi.AppNotification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [toast, setToast] = useState<{ title: string; subtitle?: string } | null>(null);
+  const toastTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      if (!notifOpen) return;
+      const target = e.target as Node | null;
+      if (notifRef.current && target && !notifRef.current.contains(target)) setNotifOpen(false);
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [notifOpen]);
+
+  useEffect(() => {
+    if (!realtimeClient || !isAuthenticated || !auth.token) return;
+
+    let cancelled = false;
+
+    // Charger les notifications initiales
+    notificationsApi
+      .listNotifications({ token: auth.token })
+      .then((items) => {
+        if (cancelled) return;
+        setNotifications(items);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setNotifications([]);
+      });
+
+    // Configurer la souscription au WebSocket
+    const setupNotificationListener = () => {
+      realtimeClient.onNotificationCreated((n) => {
+        if (cancelled) return;
+
+        setNotifications((prev) => {
+          const withoutCurrent = prev.filter((p) => p.id !== n.id);
+          return [n, ...withoutCurrent].slice(0, 50);
+        });
+
+        const inMentorat = window.location.pathname === "/mentorat";
+        const sameConversation =
+          inMentorat &&
+          Boolean(n.mentorId) &&
+          Boolean(n.etudiantId) &&
+          new URLSearchParams(window.location.search).get("mentorId") === n.mentorId &&
+          new URLSearchParams(window.location.search).get("etudiantId") === n.etudiantId;
+
+        if (!sameConversation) {
+          setUnreadCount((c) => c + 1);
+          setToast({ title: n.title, subtitle: n.body ?? undefined });
+          if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+          toastTimerRef.current = window.setTimeout(() => setToast(null), 3500);
+        }
+      });
+    };
+
+    // Connecter la présence et configurer les listeners
+    realtimeClient.registerPresence();
+    setupNotificationListener();
+
+    // Reconfigurer les listeners à chaque reconnexion
+    realtimeClient.onConnected(() => {
+      if (cancelled) return;
+      realtimeClient.registerPresence();
+      setupNotificationListener();
+    });
+
+    // Pollingège automatique des notifications toutes les 30 secondes pour parer les pertes WebSocket
+    const pollInterval = window.setInterval(() => {
+      if (cancelled) return;
+      notificationsApi
+        .listNotifications({ token: auth.token })
+        .then((items) => {
+          if (cancelled) return;
+          setNotifications(items);
+        })
+        .catch(() => {});
+    }, 30000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(pollInterval);
+      realtimeClient.disconnect();
+      if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = null;
+    };
+  }, [realtimeClient, isAuthenticated, auth.token]);
+
+  const [professionSuggestions, setProfessionSuggestions] = useState<string[]>([]);
+  const [suggestionsLoaded, setSuggestionsLoaded] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      if (!searchFocused || suggestionsLoaded) return;
+      try {
+        const items = await mentorsApi.listProfessions();
+        if (!cancelled) {
+          setProfessionSuggestions(items);
+          setSuggestionsLoaded(true);
+        }
+      } catch {
+        if (!cancelled) setSuggestionsLoaded(true);
+      }
+    }
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [searchFocused, suggestionsLoaded]);
+
+  const SEARCH_SUGGESTIONS: Suggestion[] = useMemo(() => {
+    const unique = Array.from(new Set(professionSuggestions.map((p) => p.trim()).filter(Boolean)));
+    return unique.map((p) => ({ label: p, type: "Métier" }));
+  }, [professionSuggestions]);
+
+  const [profileOpen, setProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      if (!profileOpen) return;
+      const target = e.target as Node | null;
+      if (profileRef.current && target && !profileRef.current.contains(target)) setProfileOpen(false);
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [profileOpen]);
 
   const filtered = searchQuery
     ? SEARCH_SUGGESTIONS.filter((s) =>
@@ -30,9 +171,41 @@ export function Navbar() {
     if (q.trim()) {
       setSearchQuery("");
       setSearchFocused(false);
-      navigate(`/search?q=${encodeURIComponent(q.trim())}`);
+      navigate(`/mentors?q=${encodeURIComponent(q.trim())}`);
     }
   };
+
+  async function removeNotification(e: React.MouseEvent, notificationId: string) {
+    e.stopPropagation();
+    if (!auth.token) return;
+
+    try {
+      await notificationsApi.deleteNotification({ token: auth.token, notificationId });
+      setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
+    } catch {
+      // keep item if backend deletion fails
+    }
+  }
+
+  function openNotification(n: notificationsApi.AppNotification) {
+    setNotifOpen(false);
+
+    if (n.type === "mentor_request_pending" && isMentor) {
+      navigate("/mentor-requests");
+      return;
+    }
+
+    if (n.type === "mentor_request_accepted" && n.mentorId && n.etudiantId) {
+      navigate(
+        `/mentorat?mentorId=${encodeURIComponent(n.mentorId)}&etudiantId=${encodeURIComponent(n.etudiantId)}`,
+      );
+      return;
+    }
+
+    if (n.type === "mentor_request_refused") {
+      return;
+    }
+  }
 
   return (
     <nav
@@ -171,7 +344,7 @@ export function Navbar() {
 
           {/* Right side */}
           <div className="flex items-center gap-3 flex-shrink-0">
-            {auth.status !== "authenticated" ? (
+            {!isAuthenticated ? (
               <>
                 <button
                   onClick={() => navigate("/login")}
@@ -227,51 +400,221 @@ export function Navbar() {
               </>
             )}
 
-            {/* Progress pill - hidden on mobile */}
-            <div
-              className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full text-xs"
-              style={{
-                background: "#EDE9FE",
-                color: "#7C3AED",
-                fontFamily: "'Plus Jakarta Sans', sans-serif",
-                fontWeight: 600,
-              }}
-            >
-              <div className="w-16 h-1.5 rounded-full" style={{ background: "#DDD6FE" }}>
-                <div className="h-full rounded-full" style={{ width: "45%", background: "#7C3AED" }} />
-              </div>
-              45% du parcours
-            </div>
+            {isAuthenticated ? (
+              <>
+                {/* Progress pill - hidden on mobile */}
+                <div
+                  className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full text-xs"
+                  style={{
+                    background: "#EDE9FE",
+                    color: "#7C3AED",
+                    fontFamily: "'Plus Jakarta Sans', sans-serif",
+                    fontWeight: 600,
+                  }}
+                >
+                  <div className="w-16 h-1.5 rounded-full" style={{ background: "#DDD6FE" }}>
+                    <div className="h-full rounded-full" style={{ width: "45%", background: "#7C3AED" }} />
+                  </div>
+                  45% du parcours
+                </div>
 
-            {/* Bell */}
-            <button
-              className="relative w-9 h-9 rounded-full flex items-center justify-center transition-colors hover:bg-violet-50"
-            >
-              <Bell size={18} style={{ color: "#6B7280" }} />
-              <span
-                className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full"
-                style={{ background: "#F43F5E" }}
-              />
-            </button>
+                {/* Bell */}
+                <div className="relative" ref={notifRef}>
+                    <button
+                      className="relative w-9 h-9 rounded-full flex items-center justify-center transition-colors hover:bg-violet-50"
+                      onClick={() => {
+                        setNotifOpen((v) => !v);
+                        setUnreadCount(0);
+                      }}
+                      aria-label="Notifications"
+                    >
+                      <Bell size={18} style={{ color: "#6B7280" }} />
+                      {notifications.length > 0 && (
+                        <span
+                          className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full"
+                          style={{ background: "#EF4444" }}
+                        />
+                      )}
+                      {unreadCount > 0 ? (
+                        <span
+                          className="absolute -top-0.5 -right-0.5 min-w-5 h-5 px-1 rounded-full flex items-center justify-center text-[10px]"
+                          style={{ background: "#F43F5E", color: "#FFFFFF", fontWeight: 800 }}
+                        >
+                          {unreadCount > 9 ? "9+" : unreadCount}
+                        </span>
+                      ) : null}
+                    </button>
 
-            {/* Avatar */}
-            <button className="flex items-center gap-2">
-              <div
-                className="w-9 h-9 rounded-full flex items-center justify-center text-sm"
-                style={{
-                  background: "linear-gradient(135deg, #7C3AED 0%, #EC4899 100%)",
-                  color: "white",
-                  fontFamily: "'Plus Jakarta Sans', sans-serif",
-                  fontWeight: 700,
-                }}
-              >
-                E
-              </div>
-              <ChevronDown size={14} style={{ color: "#9CA3AF" }} className="hidden sm:block" />
-            </button>
+                    {notifOpen ? (
+                      <div
+                        className="absolute right-0 mt-2 w-80 rounded-xl border overflow-hidden z-50"
+                        style={{
+                          background: "#FFFFFF",
+                          borderColor: "rgba(124,58,237,0.15)",
+                          boxShadow: "0 8px 30px rgba(124,58,237,0.12)",
+                        }}
+                      >
+                        <div className="px-4 pt-3 pb-2 border-b" style={{ borderColor: "rgba(124,58,237,0.10)" }}>
+                          <div
+                            className="text-sm"
+                            style={{ color: "#1F2937", fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800 }}
+                          >
+                            Notifications
+                          </div>
+                          <div
+                            className="text-xs mt-0.5"
+                            style={{ color: "#9CA3AF", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                          >
+                            Notifications sauvegardées
+                          </div>
+                        </div>
+
+                        {notifications.length === 0 ? (
+                          <div className="px-4 py-6">
+                            <p className="text-sm" style={{ color: "#6B7280", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                              Aucune notification.
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="max-h-80 overflow-auto">
+                            {notifications.map((n) => (
+                              <div
+                                key={n.id}
+                                className="w-full px-4 py-3 text-left hover:bg-violet-50 transition-colors"
+                              >
+                                <div className="flex items-start gap-2">
+                                  <button
+                                    type="button"
+                                    className="flex-1 min-w-0 text-left"
+                                    onClick={() => openNotification(n)}
+                                  >
+                                    <div className="text-sm" style={{ color: "#1F2937", fontWeight: 700 }}>
+                                      {n.title}
+                                    </div>
+                                    {n.body ? (
+                                      <div className="text-xs mt-1" style={{ color: "#6B7280" }}>
+                                        {n.body}
+                                      </div>
+                                    ) : null}
+                                    <div className="text-xs mt-1" style={{ color: "#9CA3AF" }}>
+                                      {new Date(n.createdAt).toLocaleString()}
+                                    </div>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="mt-0.5 rounded p-1 hover:bg-violet-100"
+                                    onClick={(e) => removeNotification(e, n.id)}
+                                    aria-label="Supprimer la notification"
+                                  >
+                                    <X size={14} style={{ color: "#9CA3AF" }} />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
+
+                {/* Avatar */}
+                <div className="relative" ref={profileRef}>
+                  <button
+                    className="flex items-center gap-2"
+                    onClick={() => setProfileOpen((v) => !v)}
+                    aria-label="Menu profil"
+                  >
+                    <div
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-sm"
+                      style={{
+                        background: "linear-gradient(135deg, #7C3AED 0%, #EC4899 100%)",
+                        color: "white",
+                        fontFamily: "'Plus Jakarta Sans', sans-serif",
+                        fontWeight: 700,
+                      }}
+                    >
+                      {(auth.user?.email?.[0] ?? "E").toUpperCase()}
+                    </div>
+                    <ChevronDown size={14} style={{ color: "#9CA3AF" }} className="hidden sm:block" />
+                  </button>
+
+                  {profileOpen ? (
+                    <div
+                      className="absolute right-0 mt-2 w-56 rounded-xl border overflow-hidden z-50"
+                      style={{
+                        background: "#FFFFFF",
+                        borderColor: "rgba(124,58,237,0.15)",
+                        boxShadow: "0 8px 30px rgba(124,58,237,0.12)",
+                      }}
+                    >
+                      <button
+                        className="w-full flex items-center justify-between px-4 py-3 hover:bg-violet-50 transition-colors text-left"
+                        onClick={() => {
+                          setProfileOpen(false);
+                          navigate("/profile");
+                        }}
+                      >
+                        <span
+                          className="text-sm"
+                          style={{
+                            color: "#1F2937",
+                            fontFamily: "'Plus Jakarta Sans', sans-serif",
+                            fontWeight: 700,
+                          }}
+                        >
+                          Profil
+                        </span>
+                      </button>
+
+                      <button
+                        className="w-full flex items-center justify-between px-4 py-3 hover:bg-violet-50 transition-colors text-left"
+                        onClick={() => {
+                          setProfileOpen(false);
+                          auth.logout();
+                          navigate("/");
+                        }}
+                      >
+                        <span
+                          className="text-sm"
+                          style={{
+                            color: "#7C3AED",
+                            fontFamily: "'Plus Jakarta Sans', sans-serif",
+                            fontWeight: 700,
+                          }}
+                        >
+                          Déconnexion
+                        </span>
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              </>
+            ) : null}
           </div>
         </div>
       </div>
+
+      {toast ? (
+        <div className="fixed top-20 right-4 z-[60]">
+          <div
+            className="w-80 rounded-xl border px-4 py-3"
+            style={{
+              background: "#FFFFFF",
+              borderColor: "rgba(124,58,237,0.18)",
+              boxShadow: "0 12px 40px rgba(124,58,237,0.18)",
+            }}
+          >
+            <div className="text-sm" style={{ color: "#1F2937", fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800 }}>
+              {toast.title}
+            </div>
+            {toast.subtitle ? (
+              <div className="text-xs mt-1" style={{ color: "#6B7280", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                {toast.subtitle}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
     </nav>
   );
 }

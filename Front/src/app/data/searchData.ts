@@ -81,6 +81,17 @@ export const MOCK_RESULTS: SearchResult[] = [
   },
   {
     type: "simulator",
+    id: "sim-dev-1h",
+    title: "Simulation metier : Je suis developpeur pendant 1h",
+    description:
+      "Comprends un besoin, reperes un bug, testes une regle et mets une application en ligne dans une mini mission guidee.",
+    duration: "12 min",
+    difficulty: "DÃ©butant",
+    color: "#2563EB",
+    participants: 3184,
+  },
+  {
+    type: "simulator",
     id: "sim-ux",
     title: "Journée dans la peau d'un UX Designer",
     description:
