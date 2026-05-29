@@ -34,7 +34,7 @@ services:
     volumes:
       - ./backend:/app
       - backend_node_modules:/app/node_modules
-    command: sh -lc "npm ci || npm i && npm run start:dev"
+    command: sh -lc "npm ci || npm i && npx prisma db push && npm run start:dev"
 
   front:
     image: node:22-alpine
