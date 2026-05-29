@@ -1142,7 +1142,7 @@ export function OrientationIASession() {
                       className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 text-sm font-bold text-white transition hover:bg-indigo-700"
                     >
                       <Plus size={16} />
-                      Nouvelle generation
+                      Nouvelle variante
                     </button>
                   </div>
 
