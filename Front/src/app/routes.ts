@@ -17,6 +17,7 @@ import { ProfilePage } from "./pages/Profile";
 import { Rencontres } from "./pages/Rencontres";
 import { MentorRequestsPage } from "./pages/MentorRequests";
 import { JeuStereotypesPage } from "./pages/JeuStereotypesPage";
+import { JeuAnimatricePage } from "./pages/JeuAnimatricePage";
 
 export const router = createBrowserRouter([
   {
@@ -41,6 +42,7 @@ export const router = createBrowserRouter([
       { path: "mentorat", Component: Mentorat },
       { path: "rencontres", Component: Rencontres },
       { path: "jeu-stereotypes", Component: JeuStereotypesPage },
+      { path: "jeu-animatrice", Component: JeuAnimatricePage },
       { path: "mentor-requests", Component: MentorRequestsPage },
       { path: "profile", Component: ProfilePage },
     ],

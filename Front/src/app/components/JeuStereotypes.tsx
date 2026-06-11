@@ -10,6 +10,14 @@ import { ProgressBar } from "./jeu/ProgressBar";
 import { QuestionCard } from "./jeu/QuestionCard";
 import { ResultsScreen } from "./jeu/ResultsScreen";
 import type { GameStage } from "./jeu/types";
+import {
+  GAME_SYNC_KEY,
+  getParticipantId,
+  readLiveGameState,
+  recordLiveResponse,
+  registerParticipant,
+  writeLiveGameState,
+} from "./jeu/sync";
 
 const QUESTION_DURATION = 20;
 
@@ -45,6 +53,7 @@ export default function JeuStereotypes() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const timerRef = useRef<number | null>(null);
   const soundEnabledRef = useRef(soundEnabled);
+  const participantIdRef = useRef<string | null>(null);
 
   const currentQuestion = questions[questionIndex];
   const maximumScore = questions.reduce(
@@ -55,6 +64,21 @@ export default function JeuStereotypes() {
   useEffect(() => {
     soundEnabledRef.current = soundEnabled;
   }, [soundEnabled]);
+
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key !== GAME_SYNC_KEY || stage !== "quiz") return;
+      const liveState = readLiveGameState();
+      if (liveState.questionIndex === questionIndex) return;
+      setQuestionIndex(Math.min(liveState.questionIndex, questions.length - 1));
+      setSelectedIndex(null);
+      setAnswered(false);
+      setTimedOut(false);
+      setTimeLeft(QUESTION_DURATION);
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, [questionIndex, stage]);
 
   const stopTimer = useCallback(() => {
     if (timerRef.current !== null) {
@@ -77,6 +101,9 @@ export default function JeuStereotypes() {
           setSelectedIndex(-1);
           setTimedOut(true);
           setAnswered(true);
+          if (participantIdRef.current) {
+            recordLiveResponse(currentQuestion, -1, participantIdRef.current);
+          }
           playTone(soundEnabledRef.current, 180, 0.22);
           return 0;
         }
@@ -89,9 +116,14 @@ export default function JeuStereotypes() {
     }, 1000);
 
     return stopTimer;
-  }, [answered, questionIndex, stage, stopTimer]);
+  }, [answered, currentQuestion, questionIndex, stage, stopTimer]);
 
   const startGame = useCallback(() => {
+    const participantId = getParticipantId();
+    participantIdRef.current = participantId;
+    registerParticipant(participantId);
+    const liveState = readLiveGameState();
+    writeLiveGameState({ ...liveState, questionIndex: 0 });
     setStage("quiz");
     setQuestionIndex(0);
     setSelectedIndex(null);
@@ -108,6 +140,9 @@ export default function JeuStereotypes() {
     setSelectedIndex(index);
     setTimedOut(false);
     setAnswered(true);
+    if (participantIdRef.current) {
+      recordLiveResponse(currentQuestion, index, participantIdRef.current);
+    }
 
     const isCorrect = !currentQuestion.isPoll && currentQuestion.correct === index;
     if (currentQuestion.isPoll) {
@@ -134,6 +169,8 @@ export default function JeuStereotypes() {
       return;
     }
     setQuestionIndex((current) => current + 1);
+    const liveState = readLiveGameState();
+    writeLiveGameState({ ...liveState, questionIndex: questionIndex + 1 });
     setSelectedIndex(null);
     setAnswered(false);
     setTimedOut(false);
