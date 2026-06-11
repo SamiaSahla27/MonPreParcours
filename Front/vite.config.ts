@@ -19,6 +19,39 @@ export default defineConfig({
 
     // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
     assetsInclude: ['**/*.svg', '**/*.csv'],
+    build: {
+        rollupOptions: {
+            output: {
+                manualChunks(id) {
+                    if (!id.includes('node_modules')) return
+                    const normalizedId = id.replaceAll('\\', '/')
+                    if (/\/node_modules\/(react|react-dom|react-router|scheduler)\//.test(normalizedId)) {
+                        return 'vendor-react'
+                    }
+                    if (normalizedId.includes('@mui') || normalizedId.includes('@emotion')) {
+                        return 'vendor-mui'
+                    }
+                    if (normalizedId.includes('framer-motion') || normalizedId.includes('/motion/')) {
+                        return 'vendor-motion'
+                    }
+                    if (normalizedId.includes('recharts') || normalizedId.includes('/d3-')) {
+                        return 'vendor-charts'
+                    }
+                    if (normalizedId.includes('@radix-ui') || normalizedId.includes('lucide-react')) {
+                        return 'vendor-ui'
+                    }
+                    const modulePath = normalizedId.split('/node_modules/')[1]
+                    if (!modulePath) return
+                    const segments = modulePath.split('/')
+                    const packageName = segments[0].startsWith('@')
+                        ? `${segments[0]}-${segments[1]}`
+                        : segments[0]
+                    if (packageName === 'cookie' || packageName === 'set-cookie-parser') return
+                    return `vendor-${packageName.replace('@', '')}`
+                },
+            },
+        },
+    },
     test: {
         environment: 'jsdom',
         globals: true,

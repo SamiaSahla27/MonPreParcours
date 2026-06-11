@@ -1,14 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import confetti from "canvas-confetti";
 import { Volume2, VolumeX } from "lucide-react";
 import { cercleQs, questions } from "./jeu/data";
-import { CircleVoice } from "./jeu/CircleVoice";
-import { InterludeScreen } from "./jeu/InterludeScreen";
 import { IntroScreen } from "./jeu/IntroScreen";
 import { ProgressBar } from "./jeu/ProgressBar";
 import { QuestionCard } from "./jeu/QuestionCard";
-import { ResultsScreen } from "./jeu/ResultsScreen";
 import type { GameStage } from "./jeu/types";
 import {
   GAME_SYNC_KEY,
@@ -21,6 +18,28 @@ import {
 import { calculateQuestionPoints } from "./jeu/scoring";
 
 const QUESTION_DURATION = 20;
+
+const CircleVoice = lazy(() =>
+  import("./jeu/CircleVoice").then((module) => ({ default: module.CircleVoice })),
+);
+const InterludeScreen = lazy(() =>
+  import("./jeu/InterludeScreen").then((module) => ({ default: module.InterludeScreen })),
+);
+const ResultsScreen = lazy(() =>
+  import("./jeu/ResultsScreen").then((module) => ({ default: module.ResultsScreen })),
+);
+
+function GameScreenFallback() {
+  return (
+    <div
+      className="flex min-h-[calc(100vh-136px)] items-center justify-center bg-[#1C1C2E] text-sm font-bold text-white/70"
+      role="status"
+      aria-live="polite"
+    >
+      Chargement...
+    </div>
+  );
+}
 
 function playTone(enabled: boolean, frequency: number, duration: number) {
   if (!enabled || typeof window === "undefined") return;
@@ -235,44 +254,46 @@ export default function JeuStereotypes() {
         {soundEnabled ? <Volume2 size={19} /> : <VolumeX size={19} />}
       </button>
 
-      <AnimatePresence mode="wait">
-        {stage === "intro" ? <IntroScreen key="intro" onStart={startGame} /> : null}
+      <Suspense fallback={<GameScreenFallback />}>
+        <AnimatePresence mode="wait">
+          {stage === "intro" ? <IntroScreen key="intro" onStart={startGame} /> : null}
 
-        {stage === "quiz" ? (
-          <QuestionCard
-            key={`question-${currentQuestion.id}`}
-            question={currentQuestion}
-            selectedIndex={selectedIndex}
-            answered={answered}
-            timedOut={timedOut}
-            timeLeft={timeLeft}
-            onSelect={handleSelect}
-            onContinue={nextQuestion}
-            isLast={questionIndex === questions.length - 1}
-          />
-        ) : null}
+          {stage === "quiz" ? (
+            <QuestionCard
+              key={`question-${currentQuestion.id}`}
+              question={currentQuestion}
+              selectedIndex={selectedIndex}
+              answered={answered}
+              timedOut={timedOut}
+              timeLeft={timeLeft}
+              onSelect={handleSelect}
+              onContinue={nextQuestion}
+              isLast={questionIndex === questions.length - 1}
+            />
+          ) : null}
 
-        {stage === "interlude" ? (
-          <InterludeScreen key="interlude" score={score} maximumScore={maximumScore} onContinue={startCircle} />
-        ) : null}
+          {stage === "interlude" ? (
+            <InterludeScreen key="interlude" score={score} maximumScore={maximumScore} onContinue={startCircle} />
+          ) : null}
 
-        {stage === "circle" ? (
-          <CircleVoice
-            key={`circle-${circleIndex}`}
-            question={cercleQs[circleIndex]}
-            answered={circleAnswered}
-            onAnswer={handleCircleAnswer}
-            onContinue={nextCircleQuestion}
-            isLast={circleIndex === cercleQs.length - 1}
-          />
-        ) : null}
+          {stage === "circle" ? (
+            <CircleVoice
+              key={`circle-${circleIndex}`}
+              question={cercleQs[circleIndex]}
+              answered={circleAnswered}
+              onAnswer={handleCircleAnswer}
+              onContinue={nextCircleQuestion}
+              isLast={circleIndex === cercleQs.length - 1}
+            />
+          ) : null}
 
-        {stage === "results" ? (
-          <motion.div key="results" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <ResultsScreen score={score} maximumScore={maximumScore} onRestart={restart} />
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+          {stage === "results" ? (
+            <motion.div key="results" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <ResultsScreen score={score} maximumScore={maximumScore} onRestart={restart} />
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+      </Suspense>
     </div>
   );
 }
