@@ -111,12 +111,17 @@ export function QuestionCard({
               <img
                 src={question.visual.image}
                 alt={question.visual.imageAlt ?? question.visual.scene}
+                loading={question.id === 1 ? "eager" : "lazy"}
+                decoding="async"
+                fetchPriority={question.id === 1 ? "high" : "auto"}
                 className="aspect-[16/9] h-full w-full object-cover"
               />
               {question.visual.secondImage ? (
                 <img
                   src={question.visual.secondImage}
                   alt={question.visual.secondImageAlt ?? question.visual.scene}
+                  loading="lazy"
+                  decoding="async"
                   className="aspect-[16/9] h-full w-full object-cover"
                 />
               ) : null}

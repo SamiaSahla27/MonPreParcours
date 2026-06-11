@@ -16,7 +16,7 @@ export function IntroScreen({ onStart }: IntroScreenProps) {
     <section className="relative min-h-[calc(100vh-72px)] overflow-hidden bg-[#1C1C2E] px-4 py-10 text-white sm:px-8 sm:py-16">
       <motion.div
         className="absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: "url('/images/jeu-stereotypes/intro-jeu-stereotypes.png')" }}
+        style={{ backgroundImage: "url('/images/jeu-stereotypes/intro-jeu-stereotypes.webp')" }}
         initial={{ scale: 1.04 }}
         animate={{ scale: 1.1 }}
         transition={{ duration: 16, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}

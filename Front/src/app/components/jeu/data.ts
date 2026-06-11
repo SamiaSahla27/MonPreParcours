@@ -11,7 +11,7 @@ export const questions: Question[] = [
       figures: "🚗💨",
       timer: "⏱ 10 sec",
       scene: "Avenue tropicale. Palmiers, bus jaune, avion dans le ciel bleu, mer au loin. Une voiture de sport bleue décapotable roule à vive allure.",
-      image: "/images/jeu-stereotypes/scene-memoire-avenue.png",
+      image: "/images/jeu-stereotypes/scene-memoire-avenue.webp",
       imageAlt: "Avenue tropicale avec palmiers, bus jaune, avion, parapente, mer et voiture bleue décapotable",
     },
     opts: [{ e: "👀", l: "J'ai bien regardé !" }],
@@ -32,9 +32,9 @@ export const questions: Question[] = [
       type: "scene-pilote",
       figures: "📊",
       scene: "Source : INSEE 2024 — données officielles sur le marché du travail en France.",
-      image: "/images/jeu-stereotypes/femme-pilote-avion.png",
+      image: "/images/jeu-stereotypes/femme-pilote-avion.webp",
       imageAlt: "Une femme pilote en uniforme devant l'escalier d'un avion au coucher du soleil",
-      secondImage: "/images/jeu-stereotypes/homme-pilote-avion.png",
+      secondImage: "/images/jeu-stereotypes/homme-pilote-avion.webp",
       secondImageAlt: "Un homme pilote en uniforme devant l'escalier d'un avion au coucher du soleil",
     },
     opts: [
@@ -62,7 +62,7 @@ export const questions: Question[] = [
       figures: "👔💻📞",
       label: "Scène A",
       scene: "Une personne en chemise blanche, au bureau. Téléphone à l'oreille, stylo en main. Post-its colorés derrière.",
-      image: "/images/jeu-stereotypes/scene-bureau-homme.png",
+      image: "/images/jeu-stereotypes/scene-bureau-homme.webp",
       imageAlt: "Un homme en chemise blanche au téléphone, assis à un bureau avec un stylo en main",
     },
     opts: [
@@ -128,7 +128,7 @@ export const questions: Question[] = [
       figures: "👩‍⚕️👩‍⚕️👩‍⚕️",
       label: "Scène B",
       scene: "Trois femmes souriantes, tenue chirurgicale bleue, bonnet de bloc. Bloc opératoire en arrière-plan.",
-      image: "/images/jeu-stereotypes/scene-chirurgiennes.png",
+      image: "/images/jeu-stereotypes/scene-chirurgiennes.webp",
       imageAlt: "Trois femmes souriantes en tenue chirurgicale bleue dans un bloc opératoire",
     },
     opts: [
@@ -271,7 +271,7 @@ export const questions: Question[] = [
       figures: "👨‍⚕️👨‍⚕️👨‍⚕️",
       label: "Scène C",
       scene: "Trois hommes souriants, tenue chirurgicale bleue, bonnet de bloc. Même bloc opératoire.",
-      image: "/images/jeu-stereotypes/scene-chirurgiens.png",
+      image: "/images/jeu-stereotypes/scene-chirurgiens.webp",
       imageAlt: "Trois hommes souriants en tenue chirurgicale bleue dans un bloc opératoire",
     },
     opts: [
@@ -313,7 +313,7 @@ export const questions: Question[] = [
       figures: "👩‍💼💻📞",
       label: "Scène D",
       scene: "Une femme en chemise blanche, au bureau. Téléphone à l'oreille, stylo en main. Post-its colorés derrière. Exactement la même scène qu'avant.",
-      image: "/images/jeu-stereotypes/scene-bureau-femme.png",
+      image: "/images/jeu-stereotypes/scene-bureau-femme.webp",
       imageAlt: "Une femme en chemise blanche au téléphone, assise à un bureau avec un stylo en main",
     },
     opts: [
