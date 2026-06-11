@@ -38,14 +38,20 @@ export default function JeuStereotypes() {
   const [circleIndex, setCircleIndex] = useState(0);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [answered, setAnswered] = useState(false);
+  const [timedOut, setTimedOut] = useState(false);
   const [circleAnswered, setCircleAnswered] = useState(false);
   const [score, setScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(QUESTION_DURATION);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const timerRef = useRef<number | null>(null);
+  const soundEnabledRef = useRef(soundEnabled);
 
   const currentQuestion = questions[questionIndex];
   const scoredQuestions = questions.filter((question) => !question.isPoll).length;
+
+  useEffect(() => {
+    soundEnabledRef.current = soundEnabled;
+  }, [soundEnabled]);
 
   const stopTimer = useCallback(() => {
     if (timerRef.current !== null) {
@@ -65,22 +71,29 @@ export default function JeuStereotypes() {
       setTimeLeft((current) => {
         if (current <= 1) {
           stopTimer();
+          setSelectedIndex(-1);
+          setTimedOut(true);
           setAnswered(true);
-          playTone(soundEnabled, 180, 0.22);
+          playTone(soundEnabledRef.current, 180, 0.22);
           return 0;
+        }
+        if (current === 6) {
+          playTone(soundEnabledRef.current, 360, 0.12);
+          if ("vibrate" in navigator) navigator.vibrate([45, 35, 45]);
         }
         return current - 1;
       });
     }, 1000);
 
     return stopTimer;
-  }, [answered, questionIndex, soundEnabled, stage, stopTimer]);
+  }, [answered, questionIndex, stage, stopTimer]);
 
   const startGame = useCallback(() => {
     setStage("quiz");
     setQuestionIndex(0);
     setSelectedIndex(null);
     setAnswered(false);
+    setTimedOut(false);
     setScore(0);
     setTimeLeft(QUESTION_DURATION);
     playTone(soundEnabled, 520, 0.12);
@@ -90,6 +103,7 @@ export default function JeuStereotypes() {
     if (answered) return;
     stopTimer();
     setSelectedIndex(index);
+    setTimedOut(false);
     setAnswered(true);
 
     const isCorrect = !currentQuestion.isPoll && currentQuestion.correct === index;
@@ -117,6 +131,7 @@ export default function JeuStereotypes() {
     setQuestionIndex((current) => current + 1);
     setSelectedIndex(null);
     setAnswered(false);
+    setTimedOut(false);
     setTimeLeft(QUESTION_DURATION);
   }, [questionIndex]);
 
@@ -147,6 +162,7 @@ export default function JeuStereotypes() {
     setCircleIndex(0);
     setSelectedIndex(null);
     setAnswered(false);
+    setTimedOut(false);
     setCircleAnswered(false);
     setScore(0);
     setTimeLeft(QUESTION_DURATION);
@@ -186,6 +202,7 @@ export default function JeuStereotypes() {
             question={currentQuestion}
             selectedIndex={selectedIndex}
             answered={answered}
+            timedOut={timedOut}
             timeLeft={timeLeft}
             onSelect={handleSelect}
             onContinue={nextQuestion}

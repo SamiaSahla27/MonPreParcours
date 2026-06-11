@@ -7,6 +7,7 @@ interface QuestionCardProps {
   question: Question;
   selectedIndex: number | null;
   answered: boolean;
+  timedOut: boolean;
   timeLeft: number;
   onSelect: (index: number) => void;
   onContinue: () => void;
@@ -38,6 +39,7 @@ export function QuestionCard({
   question,
   selectedIndex,
   answered,
+  timedOut,
   timeLeft,
   onSelect,
   onContinue,
@@ -46,6 +48,7 @@ export function QuestionCard({
   const colors = moduleColors[question.mod];
   const circumference = 2 * Math.PI * 22;
   const timerOffset = circumference * (1 - timeLeft / 20);
+  const timerColor = timeLeft <= 5 ? "#D92D20" : timeLeft <= 10 ? "#C47A0A" : "#1A7A4A";
 
   return (
     <motion.section
@@ -67,7 +70,12 @@ export function QuestionCard({
             {question.question}
           </h2>
         </div>
-        <div className="relative h-14 w-14 shrink-0" aria-label={`${timeLeft} secondes restantes`}>
+        <motion.div
+          className="relative h-14 w-14 shrink-0"
+          aria-label={`${timeLeft} secondes restantes`}
+          animate={timeLeft <= 5 && !answered ? { x: [0, -1.5, 1.5, -1.5, 1.5, 0] } : { x: 0 }}
+          transition={{ duration: 0.35, repeat: timeLeft <= 5 && !answered ? Infinity : 0, repeatDelay: 0.45 }}
+        >
           <svg className="-rotate-90" width="56" height="56" viewBox="0 0 56 56">
             <circle cx="28" cy="28" r="22" fill="none" stroke="#E2DDD6" strokeWidth="5" />
             <motion.circle
@@ -75,7 +83,7 @@ export function QuestionCard({
               cy="28"
               r="22"
               fill="none"
-              stroke={timeLeft <= 5 ? "#D92D20" : colors.accent}
+              stroke={timerColor}
               strokeWidth="5"
               strokeLinecap="round"
               strokeDasharray={circumference}
@@ -86,7 +94,7 @@ export function QuestionCard({
           <span className="absolute inset-0 flex items-center justify-center text-sm font-black text-[#1C1C2E]">
             {timeLeft}
           </span>
-        </div>
+        </motion.div>
       </div>
 
       {question.visual ? (
@@ -158,6 +166,16 @@ export function QuestionCard({
 
       {answered ? (
         <div className="mt-5 space-y-4">
+          {timedOut ? (
+            <motion.p
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-xl border-2 border-[#D92D20] bg-[#FFE8E8] px-4 py-3 text-center font-black text-[#B42318]"
+              role="status"
+            >
+              Temps écoulé : sans réponse
+            </motion.p>
+          ) : null}
           <FeedbackPanel feedback={question.fb} />
           <motion.button
             type="button"
