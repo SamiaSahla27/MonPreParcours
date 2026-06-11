@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import confetti from "canvas-confetti";
 import { ShareResult } from "./ShareResult";
+import { getScoreMessage } from "./scoring";
 
 interface ResultsScreenProps {
   score: number;
@@ -17,12 +18,6 @@ const lessons = [
 ];
 
 const quote = "Aucun métier n'est réservé. Aucun rêve n'est trop grand.";
-
-export function getScoreMessage(score: number) {
-  if (score < 500) return "Tu viens de découvrir tes biais 🧠";
-  if (score < 1000) return "Tu es sur la bonne voie ! 💪";
-  return "Champion(ne) anti-stéréotypes ! 🏆";
-}
 
 export function ResultsScreen({ score, maximumScore, onRestart }: ResultsScreenProps) {
   const [displayScore, setDisplayScore] = useState(0);

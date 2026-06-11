@@ -18,6 +18,7 @@ import {
   registerParticipant,
   writeLiveGameState,
 } from "./jeu/sync";
+import { calculateQuestionPoints } from "./jeu/scoring";
 
 const QUESTION_DURATION = 20;
 
@@ -145,12 +146,11 @@ export default function JeuStereotypes() {
     }
 
     const isCorrect = !currentQuestion.isPoll && currentQuestion.correct === index;
+    const earnedPoints = calculateQuestionPoints(currentQuestion, isCorrect, timeLeft, QUESTION_DURATION);
+    setScore((current) => current + earnedPoints);
     if (currentQuestion.isPoll) {
-      setScore((current) => current + 20);
       playTone(soundEnabled, 440, 0.1);
     } else if (isCorrect) {
-      const elapsedSeconds = QUESTION_DURATION - timeLeft;
-      setScore((current) => current + (elapsedSeconds < 10 ? 100 : 50));
       playTone(soundEnabled, 720, 0.16);
       confetti({
         particleCount: 75,
