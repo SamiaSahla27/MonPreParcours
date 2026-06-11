@@ -70,7 +70,7 @@ export function PortalHome() {
               fontWeight: 600,
             }}
           >
-            <span>5 espaces disponibles</span>
+            <span>6 espaces disponibles</span>
           </div>
         </div>
 
@@ -97,6 +97,9 @@ export function PortalHome() {
           </div>
           <div className="sm:col-span-1">
             <ExplorationCard card={cards[4]} />
+          </div>
+          <div className="sm:col-span-1">
+            <ExplorationCard card={cards[5]} />
           </div>
         </div>
 

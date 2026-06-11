@@ -14,12 +14,13 @@ export function ExplorationCard({ card, featured = false, href }: ExplorationCar
   const navigate = useNavigate();
   const Icon = card.icon;
   const isPrimaryOrientation = featured && card.id === "decouvrir";
+  const targetHref = href ?? card.href ?? `/explore/${card.id}`;
   return (
     <div
       role="button"
       tabIndex={0}
-      onClick={() => navigate(`/explore/${card.id}`)}
-      onKeyDown={(e) => e.key === "Enter" && navigate(`/explore/${card.id}`)}
+      onClick={() => navigate(targetHref)}
+      onKeyDown={(e) => e.key === "Enter" && navigate(targetHref)}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       className="relative flex flex-col rounded-2xl overflow-hidden cursor-pointer outline-none focus-visible:ring-2"
@@ -76,7 +77,7 @@ export function ExplorationCard({ card, featured = false, href }: ExplorationCar
               : `0 2px 8px ${card.accentColor}55`,
           }}
         >
-          {card.badge === "Recommandé" ? "⭐ " : "✨ "}
+          {card.badge === "Recommandé" ? "⭐ " : card.badge.startsWith("✦") ? "" : "✨ "}
           {card.badge}
         </div>
       )}
@@ -168,7 +169,7 @@ export function ExplorationCard({ card, featured = false, href }: ExplorationCar
               border: `1.5px solid ${(isPrimaryOrientation || hovered) ? "transparent" : card.accentColor + "30"}`,
               boxShadow: isPrimaryOrientation || hovered ? `0 6px 18px ${card.accentColor}44` : "none",
           }}
-          onClick={(e) => { e.stopPropagation(); navigate(`/explore/${card.id}`); }}
+          onClick={(e) => { e.stopPropagation(); navigate(targetHref); }}
         >
           {card.ctaLabel}
           <ArrowRight

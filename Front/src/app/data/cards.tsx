@@ -24,6 +24,14 @@ export interface CardData {
   ctaLabel: string;
 }
 
+function GameIcon({ className, size = 22 }: { className?: string; size?: number }) {
+  return (
+    <span className={className} style={{ fontSize: size, lineHeight: 1 }} aria-hidden="true">
+      🎮
+    </span>
+  );
+}
+
 export const cards: CardData[] = [
   {
     id: "decouvrir",
@@ -121,5 +129,21 @@ export const cards: CardData[] = [
       { title: "Métiers émergents", description: "Découvre les 50 métiers du futur créés par l'IA — prompt engineer, AI trainer, ethicist IA — et comment y accéder dès maintenant." },
     ],
     ctaLabel: "Analyser mon métier",
+  },
+  {
+    id: "jeu-stereotypes",
+    label: "STÉRÉOTYPES & MÉTIERS",
+    href: "/jeu-stereotypes",
+    need: "Je veux découvrir mes biais inconscients sur les métiers et l'orientation",
+    description: "Quiz interactif · 15 min · Événement Elles Bougent",
+    badge: "✦ Nouveau",
+    accentColor: "#6D28D9",
+    lightColor: "#F3E8FF",
+    textOnAccent: "#FFFFFF",
+    icon: GameIcon,
+    gradient: "linear-gradient(135deg, #6D28D9 0%, #4F46E5 100%)",
+    detailTitle: "Jeu des stéréotypes",
+    detailFeatures: [],
+    ctaLabel: "Jouer maintenant →",
   },
 ];
