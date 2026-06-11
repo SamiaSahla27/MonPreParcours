@@ -4,7 +4,7 @@ import confetti from "canvas-confetti";
 
 interface ResultsScreenProps {
   score: number;
-  total: number;
+  maximumScore: number;
   onRestart: () => void;
 }
 
@@ -17,9 +17,16 @@ const lessons = [
 
 const quote = "Aucun métier n'est réservé. Aucun rêve n'est trop grand.";
 
-export function ResultsScreen({ score, total, onRestart }: ResultsScreenProps) {
+function getScoreMessage(score: number) {
+  if (score < 500) return "Tu viens de découvrir tes biais 🧠";
+  if (score < 1000) return "Tu es sur la bonne voie ! 💪";
+  return "Champion(ne) anti-stéréotypes ! 🏆";
+}
+
+export function ResultsScreen({ score, maximumScore, onRestart }: ResultsScreenProps) {
   const [displayScore, setDisplayScore] = useState(0);
   const [typedQuote, setTypedQuote] = useState("");
+  const scoreMessage = getScoreMessage(score);
 
   useEffect(() => {
     confetti({ particleCount: 180, spread: 95, origin: { y: 0.65 }, colors: ["#E8431A", "#6A1A8A", "#C47A0A", "#1A7A4A"] });
@@ -55,9 +62,17 @@ export function ResultsScreen({ score, total, onRestart }: ResultsScreenProps) {
         <h2 className="mt-5 text-4xl font-black sm:text-6xl">Tes réflexes ont parlé.</h2>
         <p className="mt-4 text-white/65">Et maintenant, tu sais mieux les questionner.</p>
         <div className="mx-auto mt-8 w-fit rounded-xl border border-white/15 bg-white/10 px-8 py-5">
-          <p className="text-5xl font-black text-[#FF7957]">{displayScore}<span className="text-2xl text-white/55">/{total}</span></p>
-          <p className="mt-1 text-xs font-black uppercase tracking-widest text-white/55">bonnes réponses</p>
+          <p className="text-5xl font-black text-[#FF7957]">{displayScore}<span className="text-2xl text-white/55">/{maximumScore}</span></p>
+          <p className="mt-1 text-xs font-black uppercase tracking-widest text-white/55">points</p>
         </div>
+        <motion.p
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.55 }}
+          className="mt-5 text-xl font-black text-white sm:text-2xl"
+        >
+          {scoreMessage}
+        </motion.p>
       </div>
 
       <motion.div

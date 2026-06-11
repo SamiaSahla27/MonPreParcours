@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 
 interface InterludeScreenProps {
   score: number;
-  total: number;
+  maximumScore: number;
   onContinue: () => void;
 }
 
@@ -13,7 +13,7 @@ const steps = [
   "On découvre l'enseignement et on échange.",
 ];
 
-export function InterludeScreen({ score, total, onContinue }: InterludeScreenProps) {
+export function InterludeScreen({ score, maximumScore, onContinue }: InterludeScreenProps) {
   return (
     <section className="min-h-[calc(100vh-72px)] bg-[#11111D] px-4 py-12 text-white sm:px-8">
       <div className="mx-auto flex min-h-[calc(100vh-168px)] max-w-4xl flex-col justify-center">
@@ -37,8 +37,7 @@ export function InterludeScreen({ score, total, onContinue }: InterludeScreenPro
           <span className="block text-[#E8431A]">de vérité</span>
         </motion.h2>
         <p className="mt-5 max-w-2xl text-base font-semibold leading-7 text-white/65">
-          Partie 1 terminée : {score} bonne{score > 1 ? "s" : ""} réponse{score > 1 ? "s" : ""} sur {total} questions notées.
-          Pose le téléphone et joue avec le groupe.
+          Partie 1 terminée : tu as marqué {score} points sur {maximumScore}. Pose le téléphone et joue avec le groupe.
         </p>
 
         <div className="mt-8 divide-y divide-white/10 border-y border-white/10">

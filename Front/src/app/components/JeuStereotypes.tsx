@@ -47,7 +47,10 @@ export default function JeuStereotypes() {
   const soundEnabledRef = useRef(soundEnabled);
 
   const currentQuestion = questions[questionIndex];
-  const scoredQuestions = questions.filter((question) => !question.isPoll).length;
+  const maximumScore = questions.reduce(
+    (total, question) => total + (question.isPoll ? 20 : 100),
+    0,
+  );
 
   useEffect(() => {
     soundEnabledRef.current = soundEnabled;
@@ -107,8 +110,12 @@ export default function JeuStereotypes() {
     setAnswered(true);
 
     const isCorrect = !currentQuestion.isPoll && currentQuestion.correct === index;
-    if (isCorrect) {
-      setScore((current) => current + 1);
+    if (currentQuestion.isPoll) {
+      setScore((current) => current + 20);
+      playTone(soundEnabled, 440, 0.1);
+    } else if (isCorrect) {
+      const elapsedSeconds = QUESTION_DURATION - timeLeft;
+      setScore((current) => current + (elapsedSeconds < 10 ? 100 : 50));
       playTone(soundEnabled, 720, 0.16);
       confetti({
         particleCount: 75,
@@ -116,12 +123,10 @@ export default function JeuStereotypes() {
         origin: { y: 0.72 },
         colors: ["#1A7A4A", "#A9E5C8", "#FFFFFF"],
       });
-    } else if (!currentQuestion.isPoll) {
-      playTone(soundEnabled, 175, 0.22);
     } else {
-      playTone(soundEnabled, 440, 0.1);
+      playTone(soundEnabled, 175, 0.22);
     }
-  }, [answered, currentQuestion, soundEnabled, stopTimer]);
+  }, [answered, currentQuestion, soundEnabled, stopTimer, timeLeft]);
 
   const nextQuestion = useCallback(() => {
     if (questionIndex >= questions.length - 1) {
@@ -211,7 +216,7 @@ export default function JeuStereotypes() {
         ) : null}
 
         {stage === "interlude" ? (
-          <InterludeScreen key="interlude" score={score} total={scoredQuestions} onContinue={startCircle} />
+          <InterludeScreen key="interlude" score={score} maximumScore={maximumScore} onContinue={startCircle} />
         ) : null}
 
         {stage === "circle" ? (
@@ -227,7 +232,7 @@ export default function JeuStereotypes() {
 
         {stage === "results" ? (
           <motion.div key="results" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <ResultsScreen score={score} total={scoredQuestions} onRestart={restart} />
+            <ResultsScreen score={score} maximumScore={maximumScore} onRestart={restart} />
           </motion.div>
         ) : null}
       </AnimatePresence>
