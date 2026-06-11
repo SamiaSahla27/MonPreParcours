@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import confetti from "canvas-confetti";
+import { ShareResult } from "./ShareResult";
 
 interface ResultsScreenProps {
   score: number;
@@ -17,7 +18,7 @@ const lessons = [
 
 const quote = "Aucun métier n'est réservé. Aucun rêve n'est trop grand.";
 
-function getScoreMessage(score: number) {
+export function getScoreMessage(score: number) {
   if (score < 500) return "Tu viens de découvrir tes biais 🧠";
   if (score < 1000) return "Tu es sur la bonne voie ! 💪";
   return "Champion(ne) anti-stéréotypes ! 🏆";
@@ -101,13 +102,16 @@ export function ResultsScreen({ score, maximumScore, onRestart }: ResultsScreenP
           <span className="animate-pulse">|</span>
         </div>
 
-        <button
-          type="button"
-          onClick={onRestart}
-          className="w-full rounded-xl border-2 border-[#1C1C2E] bg-white px-5 py-4 font-black text-[#1C1C2E] outline-none transition hover:bg-[#1C1C2E] hover:text-white focus-visible:ring-4 focus-visible:ring-orange-300/50"
-        >
-          Rejouer
-        </button>
+        <div className="space-y-3">
+          <ShareResult score={score} maximumScore={maximumScore} message={scoreMessage} />
+          <button
+            type="button"
+            onClick={onRestart}
+            className="w-full rounded-xl border-2 border-[#1C1C2E] bg-white px-5 py-4 font-black text-[#1C1C2E] outline-none transition hover:bg-[#1C1C2E] hover:text-white focus-visible:ring-4 focus-visible:ring-orange-300/50"
+          >
+            Rejouer
+          </button>
+        </div>
       </motion.div>
     </section>
   );
