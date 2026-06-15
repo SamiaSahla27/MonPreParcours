@@ -8,6 +8,7 @@ interface ResultsScreenProps {
   score: number;
   maximumScore: number;
   onRestart: () => void;
+  classement?: Array<{ rank: number; participantId: string; score: number }>;
 }
 
 const lessons = [
@@ -19,7 +20,7 @@ const lessons = [
 
 const quote = "Aucun métier n'est réservé. Aucun rêve n'est trop grand.";
 
-export function ResultsScreen({ score, maximumScore, onRestart }: ResultsScreenProps) {
+export function ResultsScreen({ score, maximumScore, onRestart, classement = [] }: ResultsScreenProps) {
   const [displayScore, setDisplayScore] = useState(0);
   const [typedQuote, setTypedQuote] = useState("");
   const scoreMessage = getScoreMessage(score);
@@ -98,6 +99,19 @@ export function ResultsScreen({ score, maximumScore, onRestart }: ResultsScreenP
         </div>
 
         <div className="space-y-3">
+          {classement.length > 0 ? (
+            <section className="rounded-xl border border-[#E2DDD6] bg-[#F8F6F2] p-5" aria-label="Classement final">
+              <h3 className="font-black text-[#1C1C2E]">Classement final</h3>
+              <ol className="mt-3 space-y-2">
+                {classement.slice(0, 5).map((entry) => (
+                  <li key={entry.participantId} className="flex justify-between gap-4 font-bold text-[#5A5A7A]">
+                    <span>#{entry.rank} Participante {entry.participantId.slice(0, 4)}</span>
+                    <span>{entry.score} pts</span>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          ) : null}
           <ShareResult score={score} maximumScore={maximumScore} message={scoreMessage} />
           <button
             type="button"

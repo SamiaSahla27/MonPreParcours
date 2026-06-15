@@ -12,6 +12,8 @@ interface QuestionCardProps {
   onSelect: (index: number) => void;
   onContinue: () => void;
   isLast: boolean;
+  revealAnswer?: boolean;
+  showContinue?: boolean;
 }
 
 const moduleColors: Record<Question["mod"], { accent: string; soft: string }> = {
@@ -44,6 +46,8 @@ export function QuestionCard({
   onSelect,
   onContinue,
   isLast,
+  revealAnswer = true,
+  showContinue = true,
 }: QuestionCardProps) {
   const colors = moduleColors[question.mod];
   const circumference = 2 * Math.PI * 22;
@@ -156,7 +160,7 @@ export function QuestionCard({
             option={option}
             index={index}
             selectedIndex={selectedIndex}
-            correctIndex={question.correct}
+            correctIndex={revealAnswer ? question.correct : undefined}
             answered={answered}
             isPoll={question.isPoll}
             onSelect={onSelect}
@@ -176,16 +180,18 @@ export function QuestionCard({
               Temps écoulé : sans réponse
             </motion.p>
           ) : null}
-          <FeedbackPanel feedback={question.fb} />
-          <motion.button
-            type="button"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            onClick={onContinue}
-            className="w-full rounded-xl bg-[#1C1C2E] px-5 py-4 text-base font-black text-white outline-none transition hover:bg-[#30304A] focus-visible:ring-4 focus-visible:ring-orange-300/50"
-          >
-            {isLast ? "Passer à la partie 2 →" : "Continuer →"}
-          </motion.button>
+          {revealAnswer ? <FeedbackPanel feedback={question.fb} /> : null}
+          {showContinue ? (
+            <motion.button
+              type="button"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              onClick={onContinue}
+              className="w-full rounded-xl bg-[#1C1C2E] px-5 py-4 text-base font-black text-white outline-none transition hover:bg-[#30304A] focus-visible:ring-4 focus-visible:ring-orange-300/50"
+            >
+              {isLast ? "Passer à la partie 2 →" : "Continuer →"}
+            </motion.button>
+          ) : null}
         </div>
       ) : null}
     </motion.section>

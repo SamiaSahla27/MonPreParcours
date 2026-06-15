@@ -43,6 +43,7 @@ services:
       # Prefer same-origin in the browser (defaults to /api in code).
       # If you set VITE_BACKEND_URL explicitly, it should be reachable by the browser.
       VITE_BACKEND_URL: http://localhost:3000
+      VITE_SOCKET_URL: http://localhost:3000
       CHOKIDAR_USEPOLLING: "true"
       CHOKIDAR_INTERVAL: "300"
     ports:

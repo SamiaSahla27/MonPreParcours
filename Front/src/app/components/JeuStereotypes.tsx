@@ -1,29 +1,18 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import confetti from "canvas-confetti";
 import { Volume2, VolumeX } from "lucide-react";
 import { cercleQs, questions } from "./jeu/data";
-import { IntroScreen } from "./jeu/IntroScreen";
+import { PinScreen } from "./jeu/PinScreen";
+import { WaitingScreen } from "./jeu/WaitingScreen";
+import { LiveResults } from "./jeu/LiveResults";
 import { ProgressBar } from "./jeu/ProgressBar";
 import { QuestionCard } from "./jeu/QuestionCard";
-import type { GameStage } from "./jeu/types";
-import {
-  GAME_SYNC_KEY,
-  getParticipantId,
-  readLiveGameState,
-  recordLiveResponse,
-  registerParticipant,
-  writeLiveGameState,
-} from "./jeu/sync";
-import { calculateQuestionPoints } from "./jeu/scoring";
+import { useJeuSocket } from "./jeu/useJeuSocket";
 
 const QUESTION_DURATION = 20;
 
 const CircleVoice = lazy(() =>
   import("./jeu/CircleVoice").then((module) => ({ default: module.CircleVoice })),
-);
-const InterludeScreen = lazy(() =>
-  import("./jeu/InterludeScreen").then((module) => ({ default: module.InterludeScreen })),
 );
 const ResultsScreen = lazy(() =>
   import("./jeu/ResultsScreen").then((module) => ({ default: module.ResultsScreen })),
@@ -42,16 +31,12 @@ function GameScreenFallback() {
 }
 
 function playTone(enabled: boolean, frequency: number, duration: number) {
-  if (!enabled || typeof window === "undefined") return;
-  const AudioContextClass = window.AudioContext;
-  if (!AudioContextClass) return;
-
-  const context = new AudioContextClass();
+  if (!enabled) return;
+  const context = new window.AudioContext();
   const oscillator = context.createOscillator();
   const gain = context.createGain();
-  oscillator.type = "sine";
   oscillator.frequency.value = frequency;
-  gain.gain.setValueAtTime(0.08, context.currentTime);
+  gain.gain.setValueAtTime(0.06, context.currentTime);
   gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + duration);
   oscillator.connect(gain);
   gain.connect(context.destination);
@@ -61,44 +46,29 @@ function playTone(enabled: boolean, frequency: number, duration: number) {
 }
 
 export default function JeuStereotypes() {
-  const [stage, setStage] = useState<GameStage>("intro");
-  const [questionIndex, setQuestionIndex] = useState(0);
-  const [circleIndex, setCircleIndex] = useState(0);
+  const socket = useJeuSocket("participant");
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  const [answered, setAnswered] = useState(false);
-  const [timedOut, setTimedOut] = useState(false);
   const [circleAnswered, setCircleAnswered] = useState(false);
-  const [score, setScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(QUESTION_DURATION);
+  const [timedOut, setTimedOut] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const timerRef = useRef<number | null>(null);
-  const soundEnabledRef = useRef(soundEnabled);
-  const participantIdRef = useRef<string | null>(null);
 
+  const phase = socket.currentQuestion?.phase;
+  const questionIndex = Math.min(
+    socket.currentQuestion?.questionIndex ?? 0,
+    Math.max(questions.length - 1, 0),
+  );
+  const circleIndex = Math.min(
+    Math.max(0, (socket.currentQuestion?.questionIndex ?? questions.length) - questions.length),
+    Math.max(cercleQs.length - 1, 0),
+  );
   const currentQuestion = questions[questionIndex];
+  const answerRevealed = socket.revealedAnswer !== undefined || currentQuestion?.isPoll;
   const maximumScore = questions.reduce(
     (total, question) => total + (question.isPoll ? 20 : 100),
     0,
   );
-
-  useEffect(() => {
-    soundEnabledRef.current = soundEnabled;
-  }, [soundEnabled]);
-
-  useEffect(() => {
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key !== GAME_SYNC_KEY || stage !== "quiz") return;
-      const liveState = readLiveGameState();
-      if (liveState.questionIndex === questionIndex) return;
-      setQuestionIndex(Math.min(liveState.questionIndex, questions.length - 1));
-      setSelectedIndex(null);
-      setAnswered(false);
-      setTimedOut(false);
-      setTimeLeft(QUESTION_DURATION);
-    };
-    window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
-  }, [questionIndex, stage]);
 
   const stopTimer = useCallback(() => {
     if (timerRef.current !== null) {
@@ -108,11 +78,12 @@ export default function JeuStereotypes() {
   }, []);
 
   useEffect(() => {
-    if (stage !== "quiz" || answered) {
+    if (phase !== "quiz" || socket.answerRecorded) {
       stopTimer();
       return;
     }
-
+    setSelectedIndex(null);
+    setTimedOut(false);
     setTimeLeft(QUESTION_DURATION);
     timerRef.current = window.setInterval(() => {
       setTimeLeft((current) => {
@@ -120,177 +91,156 @@ export default function JeuStereotypes() {
           stopTimer();
           setSelectedIndex(-1);
           setTimedOut(true);
-          setAnswered(true);
-          if (participantIdRef.current) {
-            recordLiveResponse(currentQuestion, -1, participantIdRef.current);
-          }
-          playTone(soundEnabledRef.current, 180, 0.22);
+          void socket.answer({
+            questionIndex,
+            optionIndex: -1,
+            correctIndex: currentQuestion.correct,
+            isPoll: currentQuestion.isPoll,
+            timeLeft: 0,
+          });
           return 0;
         }
         if (current === 6) {
-          playTone(soundEnabledRef.current, 360, 0.12);
-          if ("vibrate" in navigator) navigator.vibrate([45, 35, 45]);
+          playTone(soundEnabled, 360, 0.12);
+          navigator.vibrate?.([45, 35, 45]);
         }
         return current - 1;
       });
     }, 1000);
-
     return stopTimer;
-  }, [answered, currentQuestion, questionIndex, stage, stopTimer]);
+  }, [
+    currentQuestion.correct,
+    currentQuestion.isPoll,
+    phase,
+    questionIndex,
+    socket.answer,
+    socket.answerRecorded,
+    soundEnabled,
+    stopTimer,
+  ]);
 
-  const startGame = useCallback(() => {
-    const participantId = getParticipantId();
-    participantIdRef.current = participantId;
-    registerParticipant(participantId);
-    const liveState = readLiveGameState();
-    writeLiveGameState({ ...liveState, questionIndex: 0 });
-    setStage("quiz");
-    setQuestionIndex(0);
-    setSelectedIndex(null);
-    setAnswered(false);
-    setTimedOut(false);
-    setScore(0);
-    setTimeLeft(QUESTION_DURATION);
-    playTone(soundEnabled, 520, 0.12);
-  }, [soundEnabled]);
+  useEffect(() => {
+    if (phase === "cercle") setCircleAnswered(false);
+  }, [circleIndex, phase]);
 
-  const handleSelect = useCallback((index: number) => {
-    if (answered) return;
+  const selectAnswer = useCallback((index: number) => {
+    if (socket.answerRecorded) return;
     stopTimer();
     setSelectedIndex(index);
     setTimedOut(false);
-    setAnswered(true);
-    if (participantIdRef.current) {
-      recordLiveResponse(currentQuestion, index, participantIdRef.current);
-    }
+    void socket.answer({
+      questionIndex,
+      optionIndex: index,
+      correctIndex: currentQuestion.correct,
+      isPoll: currentQuestion.isPoll,
+      timeLeft,
+    });
+  }, [currentQuestion, questionIndex, socket, stopTimer, timeLeft]);
 
-    const isCorrect = !currentQuestion.isPoll && currentQuestion.correct === index;
-    const earnedPoints = calculateQuestionPoints(currentQuestion, isCorrect, timeLeft, QUESTION_DURATION);
-    setScore((current) => current + earnedPoints);
-    if (currentQuestion.isPoll) {
-      playTone(soundEnabled, 440, 0.1);
-    } else if (isCorrect) {
-      playTone(soundEnabled, 720, 0.16);
-      confetti({
-        particleCount: 75,
-        spread: 65,
-        origin: { y: 0.72 },
-        colors: ["#1A7A4A", "#A9E5C8", "#FFFFFF"],
-      });
-    } else {
-      playTone(soundEnabled, 175, 0.22);
-    }
-  }, [answered, currentQuestion, soundEnabled, stopTimer, timeLeft]);
-
-  const nextQuestion = useCallback(() => {
-    if (questionIndex >= questions.length - 1) {
-      setStage("interlude");
-      return;
-    }
-    setQuestionIndex((current) => current + 1);
-    const liveState = readLiveGameState();
-    writeLiveGameState({ ...liveState, questionIndex: questionIndex + 1 });
-    setSelectedIndex(null);
-    setAnswered(false);
-    setTimedOut(false);
-    setTimeLeft(QUESTION_DURATION);
-  }, [questionIndex]);
-
-  const startCircle = useCallback(() => {
-    setCircleIndex(0);
-    setCircleAnswered(false);
-    setStage("circle");
-  }, []);
-
-  const handleCircleAnswer = useCallback(() => {
+  const answerCircle = useCallback((stoodUp: boolean) => {
+    if (circleAnswered) return;
     setCircleAnswered(true);
-    playTone(soundEnabled, 470, 0.12);
-  }, [soundEnabled]);
+    void socket.answer({
+      questionIndex: questions.length + circleIndex,
+      optionIndex: stoodUp ? 0 : 1,
+      isPoll: true,
+      timeLeft: QUESTION_DURATION,
+    });
+  }, [circleAnswered, circleIndex, socket]);
 
-  const nextCircleQuestion = useCallback(() => {
-    if (circleIndex >= cercleQs.length - 1) {
-      setStage("results");
-      return;
-    }
-    setCircleIndex((current) => current + 1);
-    setCircleAnswered(false);
-  }, [circleIndex]);
+  if (!socket.joined) {
+    return <PinScreen connected={socket.connected} error={socket.error} onJoin={socket.joinSession} />;
+  }
 
-  const restart = useCallback(() => {
-    stopTimer();
-    setStage("intro");
-    setQuestionIndex(0);
-    setCircleIndex(0);
-    setSelectedIndex(null);
-    setAnswered(false);
-    setTimedOut(false);
-    setCircleAnswered(false);
-    setScore(0);
-    setTimeLeft(QUESTION_DURATION);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [stopTimer]);
+  if (!socket.currentQuestion || phase === "lobby" || socket.paused) {
+    return <WaitingScreen pin={socket.pin} paused={socket.paused} />;
+  }
+
+  if (phase === "termine") {
+    return (
+      <Suspense fallback={<GameScreenFallback />}>
+        <ResultsScreen
+          score={socket.score}
+          maximumScore={maximumScore}
+          onRestart={() => window.location.reload()}
+          classement={socket.classement}
+        />
+      </Suspense>
+    );
+  }
 
   return (
     <div className="relative min-h-[calc(100vh-72px)] overflow-hidden bg-[#F4F1EC] text-[#1C1C2E]">
-      {stage !== "intro" && stage !== "results" ? (
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-white/10 bg-[#1C1C2E]/95 px-4 backdrop-blur sm:px-6">
-          <span className="hidden whitespace-nowrap text-sm font-black text-[#FF7957] sm:block">Et toi ?</span>
-          <ProgressBar
-            current={stage === "quiz" ? questionIndex + 1 : circleIndex + 1}
-            total={stage === "quiz" ? questions.length : cercleQs.length}
-            color={stage === "quiz" ? "#E8431A" : "#C47A0A"}
-            label={stage === "quiz" ? "Question" : "Cercle"}
-          />
-        </header>
-      ) : null}
+      <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-white/10 bg-[#1C1C2E]/95 px-4 backdrop-blur sm:px-6">
+        <span className="hidden whitespace-nowrap text-sm font-black text-[#FF7957] sm:block">PIN {socket.pin}</span>
+        <ProgressBar
+          current={(phase === "quiz" ? questionIndex : circleIndex) + 1}
+          total={phase === "quiz" ? questions.length : cercleQs.length}
+          color={phase === "quiz" ? "#E8431A" : "#C47A0A"}
+          label={phase === "quiz" ? "Question" : "Cercle"}
+        />
+      </header>
 
       <button
         type="button"
         onClick={() => setSoundEnabled((current) => !current)}
         className="fixed bottom-4 right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-[#1C1C2E] text-white shadow-lg outline-none focus-visible:ring-4 focus-visible:ring-orange-300/60"
         aria-label={soundEnabled ? "Désactiver les sons" : "Activer les sons"}
-        title={soundEnabled ? "Désactiver les sons" : "Activer les sons"}
       >
         {soundEnabled ? <Volume2 size={19} /> : <VolumeX size={19} />}
       </button>
 
       <Suspense fallback={<GameScreenFallback />}>
         <AnimatePresence mode="wait">
-          {stage === "intro" ? <IntroScreen key="intro" onStart={startGame} /> : null}
-
-          {stage === "quiz" ? (
-            <QuestionCard
-              key={`question-${currentQuestion.id}`}
-              question={currentQuestion}
-              selectedIndex={selectedIndex}
-              answered={answered}
-              timedOut={timedOut}
-              timeLeft={timeLeft}
-              onSelect={handleSelect}
-              onContinue={nextQuestion}
-              isLast={questionIndex === questions.length - 1}
-            />
-          ) : null}
-
-          {stage === "interlude" ? (
-            <InterludeScreen key="interlude" score={score} maximumScore={maximumScore} onContinue={startCircle} />
-          ) : null}
-
-          {stage === "circle" ? (
-            <CircleVoice
-              key={`circle-${circleIndex}`}
-              question={cercleQs[circleIndex]}
-              answered={circleAnswered}
-              onAnswer={handleCircleAnswer}
-              onContinue={nextCircleQuestion}
-              isLast={circleIndex === cercleQs.length - 1}
-            />
-          ) : null}
-
-          {stage === "results" ? (
-            <motion.div key="results" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <ResultsScreen score={score} maximumScore={maximumScore} onRestart={restart} />
+          {phase === "quiz" ? (
+            <motion.div key={`live-question-${questionIndex}`} exit={{ opacity: 0 }}>
+              <QuestionCard
+                question={currentQuestion}
+                selectedIndex={selectedIndex}
+                answered={socket.answerRecorded}
+                timedOut={timedOut}
+                timeLeft={timeLeft}
+                onSelect={selectAnswer}
+                onContinue={() => undefined}
+                isLast={questionIndex === questions.length - 1}
+                revealAnswer={answerRevealed}
+                showContinue={false}
+              />
+              {socket.answerRecorded ? (
+                <div className="mx-auto max-w-5xl px-4 pb-10 sm:px-6">
+                  {!answerRevealed ? (
+                    <p className="rounded-xl bg-[#1C1C2E] px-5 py-4 text-center font-black text-white" role="status">
+                      Ta réponse est enregistrée ✓ En attente de la révélation...
+                    </p>
+                  ) : null}
+                  <LiveResults options={currentQuestion.opts} liveResults={socket.liveResults} />
+                </div>
+              ) : null}
             </motion.div>
+          ) : null}
+
+          {phase === "cercle" ? (
+            <div key={`live-circle-${circleIndex}`}>
+              <CircleVoice
+                question={cercleQs[circleIndex]}
+                answered={circleAnswered}
+                onAnswer={answerCircle}
+                onContinue={() => undefined}
+                isLast={circleIndex === cercleQs.length - 1}
+                showContinue={false}
+              />
+              {circleAnswered ? (
+                <div className="mx-auto max-w-4xl px-4 pb-10">
+                  <LiveResults
+                    options={[
+                      { e: "✋", l: "Je me lève" },
+                      { e: "🪑", l: "Je reste assise" },
+                    ]}
+                    liveResults={socket.liveResults}
+                  />
+                </div>
+              ) : null}
+            </div>
           ) : null}
         </AnimatePresence>
       </Suspense>

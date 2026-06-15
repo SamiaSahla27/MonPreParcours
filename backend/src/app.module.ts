@@ -9,6 +9,7 @@ import { MentorsModule } from './mentors/mentors.module';
 import { ProfileModule } from './profile/profile.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { MentorRequestsModule } from './mentor-requests/mentor-requests.module';
+import { JeuModule } from './jeu/jeu.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { MentorRequestsModule } from './mentor-requests/mentor-requests.module';
     ProfileModule,
     NotificationsModule,
     MentorRequestsModule,
+    JeuModule,
   ],
   controllers: [AppController],
   providers: [AppService],

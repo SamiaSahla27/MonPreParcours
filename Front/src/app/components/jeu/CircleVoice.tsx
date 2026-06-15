@@ -7,6 +7,7 @@ interface CircleVoiceProps {
   onAnswer: (stoodUp: boolean) => void;
   onContinue: () => void;
   isLast: boolean;
+  showContinue?: boolean;
 }
 
 const revealColors = {
@@ -15,7 +16,14 @@ const revealColors = {
   split: { accent: "#C47A0A", soft: "#FFF8E6" },
 } as const;
 
-export function CircleVoice({ question, answered, onAnswer, onContinue, isLast }: CircleVoiceProps) {
+export function CircleVoice({
+  question,
+  answered,
+  onAnswer,
+  onContinue,
+  isLast,
+  showContinue = true,
+}: CircleVoiceProps) {
   const colors = revealColors[question.type];
 
   return (
@@ -73,13 +81,15 @@ export function CircleVoice({ question, answered, onAnswer, onContinue, isLast }
         >
           <h3 className="text-2xl font-black" style={{ color: colors.accent }}>{question.title}</h3>
           <p className="mt-2 font-semibold leading-7 text-[#1C1C2E]">{question.body}</p>
-          <button
-            type="button"
-            onClick={onContinue}
-            className="mt-5 w-full rounded-xl bg-[#1C1C2E] px-5 py-4 font-black text-white outline-none focus-visible:ring-4 focus-visible:ring-orange-300/50"
-          >
-            {isLast ? "Voir les résultats →" : "Question suivante →"}
-          </button>
+          {showContinue ? (
+            <button
+              type="button"
+              onClick={onContinue}
+              className="mt-5 w-full rounded-xl bg-[#1C1C2E] px-5 py-4 font-black text-white outline-none focus-visible:ring-4 focus-visible:ring-orange-300/50"
+            >
+              {isLast ? "Voir les résultats →" : "Question suivante →"}
+            </button>
+          ) : null}
         </motion.div>
       ) : null}
     </motion.section>

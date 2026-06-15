@@ -22,7 +22,7 @@ export function OptionButton({
 }: OptionButtonProps) {
   const selected = selectedIndex === index;
   const correct = answered && !isPoll && correctIndex === index;
-  const incorrect = answered && !isPoll && selected && correctIndex !== index;
+  const incorrect = answered && !isPoll && selected && correctIndex !== undefined && correctIndex !== index;
 
   const background = correct
     ? "#E8F5EE"
